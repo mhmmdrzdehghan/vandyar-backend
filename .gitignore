@@ -1,0 +1,8 @@
+venv/
+.env
+liara.json
+logs/
+staticfiles/
+dockerfile
+docker-compose.yml
+gitignore
