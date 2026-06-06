@@ -10,12 +10,29 @@ from django.db import transaction
 from .models import User, Profile
 
 
+class ProfileSerializer(serializers.ModelSerializer):
+    username = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
+    class Meta:
+        model     = Profile
+        fields    = ['id','user' , 'username' ,'phone' , 'first_name' , 'last_name' , 'avatar', 'role' , 'created_at' , 'updated_at']
+        read_only_fields = ['id' , 'user' , 'username' ,'role' ,'created_at' , 'updated_at']
+
+    def get_role(self, obj):
+        return obj.user.role  
+
+    def get_username(self, instance):  
+        return instance.user.username
+
+
 class UserSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(write_only=True)
     first_name = serializers.CharField(write_only=True)
     last_name = serializers.CharField(write_only=True)
     avatar = serializers.ImageField(write_only=True, required=False)
     password = serializers.CharField(write_only=True)
+
+    Profile = ProfileSerializer()
 
     class Meta:
         model = User
@@ -26,10 +43,11 @@ class UserSerializer(serializers.ModelSerializer):
             "password",
             "phone",
             "first_name",
+            "Profile",
             "last_name",
             "avatar",
         ]
-        read_only_fields = ["id"]
+        read_only_fields = ["id" , "Profile"]
 
     def validate_phone(self, value):
         if not value.startswith("09"):
@@ -105,13 +123,5 @@ class CustomAuthTokenSerializer(serializers.Serializer):
         return attrs
 
 
-class ProfileSerializer(serializers.ModelSerializer):
-    role = serializers.SerializerMethodField()
-    class Meta:
-        model     = Profile
-        fields    = ['id','user' , 'phone' , 'first_name' , 'last_name' , 'avatar', 'role' , 'created_at' , 'updated_at']
-        read_only_fields = ['id' , 'user' , 'role' ,'created_at' , 'updated_at']
 
-    def get_role(self, obj):
-        return obj.user.role    
     

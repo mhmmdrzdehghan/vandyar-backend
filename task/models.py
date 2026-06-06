@@ -3,6 +3,7 @@ from django.db import models
 from account.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
+from project.models import SubProject
 
 
 class Priority(models.TextChoices):
@@ -11,6 +12,14 @@ class Priority(models.TextChoices):
         HIGH = "high"
 
 class Task(models.Model):
+
+    subproject = models.ForeignKey(
+        SubProject,
+        on_delete=models.CASCADE,
+        related_name="tasks",
+        null=True,
+        blank=True
+    )
 
     title       = models.CharField(max_length=255)
     description = models.TextField(null=True, blank=True)

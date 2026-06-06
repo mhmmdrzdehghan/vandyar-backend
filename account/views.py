@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from rest_framework.generics import CreateAPIView , UpdateAPIView , RetrieveAPIView
+from rest_framework.generics import CreateAPIView , UpdateAPIView , RetrieveAPIView , ListCreateAPIView
 from .serializer import UserSerializer , CustomAuthTokenSerializer , ProfileSerializer
 from django.db import transaction
 from .models import User , Profile
@@ -32,6 +32,12 @@ class UpdateProfileView(UpdateAPIView):
     def get_object(self):
         return self.request.user.Profile
     
+    # def update(self, request, *args, **kwargs):
+    #     super().update(request, *args, **kwargs)
+
+    #     return Respo
+
+    
 
 class ProfileDetailView(RetrieveAPIView):
     serializer_class = ProfileSerializer
@@ -41,3 +47,8 @@ class ProfileDetailView(RetrieveAPIView):
         return self.request.user.Profile
     
     
+class UsersView(ListCreateAPIView):
+    serializer_class = UserSerializer
+
+    queryset = User.objects.all()
+
