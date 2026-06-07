@@ -6,3 +6,4 @@ staticfiles/
 dockerfile
 docker-compose.yml
 gitignore
+media/

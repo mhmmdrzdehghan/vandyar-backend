@@ -50,7 +50,8 @@ class Profile(models.Model):
     phone             = models.CharField(max_length=20, unique=True)
     first_name        = models.CharField( max_length=255)
     last_name         = models.CharField( max_length=255)
-    avatar            = models.ImageField(upload_to="avatars/",null=True,blank=True)
+    avatar            = models.ImageField(upload_to="avatars/", null=True, blank=True)
+
     created_at        = models.DateTimeField(auto_now_add=True)
     updated_at        = models.DateTimeField(auto_now=True)
         

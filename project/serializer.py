@@ -25,7 +25,7 @@ class SubProjectSerializer(serializers.ModelSerializer):
         ]
 
 class ProjectSerializer(serializers.ModelSerializer):
-    subprojects = SubProjectSerializer(many=True)
+    subprojects = SubProjectSerializer(many=True, read_only=True)
     class Meta:
         model = Project
         fields = [
