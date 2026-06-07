@@ -1,8 +1,10 @@
 from django.contrib import admin
 
-# Register your models here.
-from django.contrib import admin
-from .models import Conversation, ConversationMember, Message
+from .models import (
+    Conversation,
+    ConversationMember,
+    Message
+)
 
 
 class ConversationMemberInline(admin.TabularInline):
@@ -14,7 +16,11 @@ class ConversationMemberInline(admin.TabularInline):
 class MessageInline(admin.TabularInline):
     model = Message
     extra = 0
-    readonly_fields = ["sender", "content", "created_at"]
+    readonly_fields = [
+        "sender",
+        "content",
+        "created_at"
+    ]
     ordering = ["-created_at"]
     show_change_link = True
 
@@ -26,7 +32,7 @@ class ConversationAdmin(admin.ModelAdmin):
         "id",
         "title",
         "type",
-        "subproject",
+        "group",
         "created_by",
         "members_count",
         "created_at",
@@ -40,29 +46,28 @@ class ConversationAdmin(admin.ModelAdmin):
     search_fields = (
         "title",
         "created_by__email",
-        "subproject__title",
+        "group__title",
     )
 
-    autocomplete_fields = [
+    autocomplete_fields = (
         "created_by",
-        "subproject",
-    ]
+        "group",
+    )
 
-    readonly_fields = [
+    readonly_fields = (
         "created_at",
         "updated_at",
-    ]
+    )
 
-    inlines = [
+    inlines = (
         ConversationMemberInline,
         MessageInline,
-    ]
+    )
 
     def members_count(self, obj):
         return obj.members.count()
 
     members_count.short_description = "Members"
-
 
 
 @admin.register(ConversationMember)
@@ -86,16 +91,15 @@ class ConversationMemberAdmin(admin.ModelAdmin):
         "conversation__title",
     )
 
-    autocomplete_fields = [
+    autocomplete_fields = (
         "conversation",
         "user",
-    ]
+    )
 
-    readonly_fields = [
+    readonly_fields = (
         "created_at",
         "updated_at",
-    ]
-
+    )
 
 
 @admin.register(Message)
@@ -121,18 +125,18 @@ class MessageAdmin(admin.ModelAdmin):
         "conversation__title",
     )
 
-    autocomplete_fields = [
+    autocomplete_fields = (
         "conversation",
         "sender",
-    ]
+    )
 
-    readonly_fields = [
+    readonly_fields = (
         "created_at",
-    ]
+    )
 
-    ordering = [
+    ordering = (
         "-created_at",
-    ]
+    )
 
     def short_content(self, obj):
         return obj.content[:50]
