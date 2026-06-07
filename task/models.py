@@ -5,6 +5,15 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
 from project.models import SubProject
 
+class Status(models.Model):
+    title      = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.title
+    
+
 
 class Priority(models.TextChoices):
         LOW = "low"
@@ -36,6 +45,55 @@ class Task(models.Model):
         blank=True
     )
 
+    assigned_to = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="assigned_tasks"
+    )
+
+    status = models.ForeignKey(
+        Status,
+        on_delete=models.PROTECT,
+        related_name="task_assignments"
+    )
+
+    start_time = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    end_time = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    quality_rate = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[
+        MinValueValidator(1),
+        MaxValueValidator(5)
+    ]
+    )
+
+    parent_id = models.ForeignKey(
+    "self",
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True,
+    related_name="forwarded_tasks"
+    )
+
+    root_task = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="task_chain"
+    )
+
+    can_forward = models.BooleanField()
+
     created_by = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -43,22 +101,14 @@ class Task(models.Model):
         blank=True,
         null=True,
     )
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.title
-
-
-class Status(models.Model):
-    title      = models.CharField(max_length=255, unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.title
     
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.title
+
 
 class TaskRoutine(models.Model):
 
@@ -98,61 +148,6 @@ class TaskRoutine(models.Model):
     updated_at = models.DateTimeField(
         auto_now=True
     )    
-
-
-class TaskAssignment(models.Model):
-    task = models.ForeignKey(
-        Task,
-        on_delete=models.CASCADE,
-        related_name="assignments"
-    )
-
-    assigned_to = models.ForeignKey(
-        User,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="assigned_tasks"
-    )
-
-    status = models.ForeignKey(
-        Status,
-        on_delete=models.PROTECT,
-        related_name="task_assignments"
-    )
-
-    start_time = models.DateTimeField(
-        null=True,
-        blank=True
-    )
-
-    end_time = models.DateTimeField(
-        null=True,
-        blank=True
-    )
-
-    quality_rate = models.IntegerField(
-        null=True,
-        blank=True,
-        validators=[
-        MinValueValidator(1),
-        MaxValueValidator(5)
-    ]
-    )
-
-    action_log = models.JSONField(
-        default=list,
-        blank=True,
-        null=True,
-    )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True
-    )
-
-    updated_at = models.DateTimeField(
-        auto_now=True
-    )
 
 
 class TaskAttachment(models.Model):

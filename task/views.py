@@ -1,21 +1,27 @@
 from django.shortcuts import render
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import UpdateAPIView
-from .serializer import TaskSerializer , StatusSerializer , TaskAssignmentSerializer , TaskAttachmentSerializer , CheckListSeializer , TaskRountineSerializer
+from .serializer import TaskSerializer , StatusSerializer  , TaskAttachmentSerializer , CheckListSeializer , TaskRountineSerializer
 from rest_framework.permissions import IsAuthenticated
-from .models import Task , Status , TaskAssignment , TaskAttachment , TaskRoutine , CheckList
+from .models import Task , Status , TaskAttachment , TaskRoutine , CheckList
 from django.db import transaction
 from rest_framework.response import Response
 from datetime import timedelta
+from rest_framework.views import APIView
+from project.models import SubProject
+from django.db.models import Count
 
 
 class TaskView(ModelViewSet):
     serializer_class  = TaskSerializer
     permission_classes = [IsAuthenticated]
 
+    queryset = Task.objects.all()
+
 
     def create(self, request, *args, **kwargs):
         with transaction.atomic():
+
             serializer = TaskSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
 
@@ -25,13 +31,13 @@ class TaskView(ModelViewSet):
 
 
             is_routine = data.get("is_routine" , False)
-            assignments_data = data.pop('assignments' , [])
             files_data = data.pop('files' , [])
             checklist_data = data.pop('checklist' , [])
 
             # return Response(is_routine)
 
             routines = None
+            routines_response = None 
             if is_routine:
                 routines = data.pop("routines" , [])
 
@@ -44,15 +50,11 @@ class TaskView(ModelViewSet):
 
                 routines_response = self.CreateRoutineTask(task,routines)
 
-            assignments_response = self.CreateAssignment(task , assignments_data)
             files_response =  self.CreateFile(task , files_data , user)
             checklist_response =  self.CreateCheklist(task , checklist_data)
 
 
-
-
-
-            response = {'task':TaskSerializer(task).data , 'assignment':TaskAssignmentSerializer(assignments_response , many=True).data ,  'file':TaskAttachmentSerializer(files_response , many=True).data,  'checklist':CheckListSeializer(checklist_response , many=True).data  ,'routine':TaskRountineSerializer(routines_response).data}
+            response = {'task':TaskSerializer(task).data ,  'file':TaskAttachmentSerializer(files_response , many=True).data,  'checklist':CheckListSeializer(checklist_response , many=True).data  ,'routine':TaskRountineSerializer(routines_response).data}
 
             return Response(response)
         
@@ -88,7 +90,6 @@ class TaskView(ModelViewSet):
             task.save()
             
             TaskRoutine.objects.filter(task=task).delete()
-            TaskAssignment.objects.filter(task=task).delete()
             TaskAttachment.objects.filter(task=task).delete()
             CheckList.objects.filter(task=task).delete()
 
@@ -142,18 +143,7 @@ class TaskView(ModelViewSet):
             response.append(file)
 
         return response   
-
-    def CreateAssignment(self ,task ,assignments_data):
-        response = []
-        for assignment_data in assignments_data:
-            assignment =  TaskAssignment.objects.create(
-                task=task,
-                **assignment_data
-            )  
-
-            response.append(assignment)
-
-        return response      
+  
 
     def CreateCheklist(self ,task, checklist_data):
         response = []
@@ -170,23 +160,27 @@ class StatusView(ModelViewSet):
     queryset = Status.objects.all()
     
 
-class TaskAssignmentView(UpdateAPIView):
-    serializer_class =  TaskAssignmentSerializer
-    permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
-        return TaskAssignment.objects.filter(assigned_to=self.request.user)
-    
+# class RateTask(UpdateAPIView):
+#     serializer_class =  TaskAssignmentSerializer
+#     permission_classes = [IsAuthenticated]
 
-class RateTask(UpdateAPIView):
-    serializer_class =  TaskAssignmentSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        return TaskAssignment.objects.filter(task__created_by=self.request.user , status=3)
+#     def get_queryset(self):
+#         return TaskAssignment.objects.filter(task__created_by=self.request.user , status=3)
     
 
 
+#data :
+
+class TaskDataView(APIView):
+    def get(self, request, *args, **kwargs):
+        # print(list(Task.objects.all()))
+        tasks = Task.objects.all()
+
+        serializer = TaskSerializer(tasks, many=True)
+
+        return Response(serializer.data)
+         
 
 
     

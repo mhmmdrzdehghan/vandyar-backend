@@ -2,12 +2,13 @@ from django.shortcuts import render
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated
 from .serializer import ProjectSerializer , SubProjectSerializer
-from .models import SubProject , Project
+from .models import Project , SubProject
+from rest_framework.generics import ListAPIView
+from rest_framework.views import APIView
 from rest_framework.response import Response
-from chat.models import Conversation
+from group.models import Group
 from django.db import transaction
-from chat.models import ConversationMember
-from chat.serializer import ConversationMemberSerializer
+from chat.models import Conversation , ConversationMember
 
 class ProjectView(ModelViewSet):
     serializer_class = ProjectSerializer
@@ -19,15 +20,87 @@ class ProjectView(ModelViewSet):
 
     queryset = Project.objects.all()
 
-
-
 class SubProjetView(ModelViewSet):
     serializer_class = SubProjectSerializer
     permission_classes = [IsAuthenticated]
 
+    queryset = SubProject.objects.all()
+
     def perform_create(self, serializer):
         return serializer.save(created_by=self.request.user)
+    
+    def create(self, request, *args, **kwargs):
+        with transaction.atomic():
+            serializer = SubProjectSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            data =  serializer.validated_data
 
+            members = data.pop('members',[])
+            managers = data.pop('managers',[])
+
+
+            sub = SubProject.objects.create(created_by = request.user ,**data)
+
+            if members:
+                sub.members.set(members)
+
+            if managers:
+                sub.managers.set(managers)
+
+            group = Group.objects.create(title="گروه مدیریت" ,subproject=sub , created_by = request.user) 
+
+            group.members.set(managers)
+            
+            project = sub.project
+            
+            title = f"{sub.title}-{group.title}({project})"
+
+
+            conversation = Conversation.objects.create(
+                type="group",
+                title=title,
+                group=group,
+                created_by=request.user
+            )
+
+            for manager in sub.managers.all():
+                ConversationMember.objects.get_or_create(
+                    conversation=conversation,
+                    user=manager,
+                    is_admin=True
+                )
+  
+
+            group.members.set(members) 
+
+        return Response(SubProjectSerializer(sub).data)         
+
+
+#data:
+
+class ProjectDataView(APIView):
+
+    def get(self, request, *args, **kwargs):
+
+        project_id = kwargs.get('project_id')
+
+        if project_id:
+            project = Project.objects.prefetch_related(
+                'subprojects__groups'
+            ).get(id=project_id)
+
+            serializer = ProjectSerializer(project)
+            return Response(serializer.data)
+
+        projects = Project.objects.prefetch_related(
+            'subprojects__groups'
+        ).all()
+
+        serializer = ProjectSerializer(projects, many=True)
+        return Response(serializer.data)
+
+
+    
 
 
 

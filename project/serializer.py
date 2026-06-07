@@ -1,9 +1,10 @@
 from rest_framework import serializers
 from .models import Project, SubProject
-
+from group.serializer import GroupSerializer
 
 
 class SubProjectSerializer(serializers.ModelSerializer):
+    groups = GroupSerializer(many=True , read_only=True)
     class Meta:
         model = SubProject
         fields = [
@@ -12,6 +13,7 @@ class SubProjectSerializer(serializers.ModelSerializer):
             "title",
             "description",
             "managers",
+            "groups",
             "members",
             "created_by",
             "created_at",
@@ -20,6 +22,7 @@ class SubProjectSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
             "created_by",
+            "groups",
             "created_at",
             "updated_at",
         ]
@@ -44,6 +47,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+  
 
 
 

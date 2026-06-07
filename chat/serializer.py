@@ -56,7 +56,7 @@ class ConversationSerializer(serializers.ModelSerializer):
             "id",
             "type",
             "title",
-            "subproject",
+            "group",
             "created_by",
             "members",
             "created_at",
@@ -66,7 +66,6 @@ class ConversationSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
             "created_by",
-            "members",
             "created_at",
             "updated_at",
         ]

@@ -2,7 +2,10 @@ from django.shortcuts import render
 from rest_framework.viewsets import ModelViewSet
 from .serializer import MessageSerializer
 from rest_framework.permissions import IsAuthenticated
-from .models import Message
+from .models import Message , Conversation
+from .serializer import ConversationSerializer
+from rest_framework.views import APIView
+from rest_framework.response import Response
 # Create your views here.
 
 
@@ -22,4 +25,15 @@ class MessageView(ModelViewSet):
         return Message.objects.filter(sender=self.request.user ,conversation=conversation_id)
 
 
+
+class ConversationData(APIView):
+    def get(self, request, *args, **kwargs):
+
+
+        conversations = Conversation.objects.filter(
+            members__user=request.user
+        ).distinct()
+
+        return Response(ConversationSerializer(conversations , many=True).data)
+        
     

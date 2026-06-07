@@ -1,4 +1,3 @@
-from django.contrib import admin
 
 from django.db import models
 from account.models import User
@@ -22,8 +21,6 @@ class Project(models.Model):
 
 
 
-
-
 class SubProject(models.Model):
     project = models.ForeignKey(
         Project,
@@ -44,8 +41,7 @@ class SubProject(models.Model):
         User,
         related_name="subproject_memberships",
         blank=True
-    )    
-
+        )   
 
     created_by = models.ForeignKey(
         User,
