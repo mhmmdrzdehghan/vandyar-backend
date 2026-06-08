@@ -2,9 +2,9 @@ from django.contrib import admin
 from .models import Task, Status, TaskRoutine, TaskAttachment, CheckList
 
 
-# ----------------------
-# STATUS
-# ----------------------
+# ------------------------
+# Status
+# ------------------------
 @admin.register(Status)
 class StatusAdmin(admin.ModelAdmin):
     list_display = ("id", "title", "created_at")
@@ -12,47 +12,38 @@ class StatusAdmin(admin.ModelAdmin):
     ordering = ("id",)
 
 
-# ----------------------
-# CHECKLIST INLINE
-# ----------------------
-class CheckListInline(admin.TabularInline):
-    model = CheckList
-    extra = 0
-    fields = ("title", "is_done", "created_at")
-    readonly_fields = ("created_at",)
-
-
-# ----------------------
-# ATTACHMENT INLINE
-# ----------------------
+# ------------------------
+# Task Attachment Inline
+# ------------------------
 class TaskAttachmentInline(admin.TabularInline):
     model = TaskAttachment
     extra = 0
-    readonly_fields = ("file_size", "file_type", "uploaded_by", "created_at")
+    readonly_fields = ("file_size", "uploaded_by", "created_at")
 
 
-# ----------------------
-# TASK ROUTINE INLINE
-# ----------------------
-class TaskRoutineInline(admin.StackedInline):
-    model = TaskRoutine
-    can_delete = False
+# ------------------------
+# Checklist Inline
+# ------------------------
+class CheckListInline(admin.TabularInline):
+    model = CheckList
+    extra = 0
 
 
-# ----------------------
-# TASK ADMIN
-# ----------------------
+# ------------------------
+# Task
+# ------------------------
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
+
     list_display = (
         "id",
         "title",
+        "assigned_to",
         "status",
         "priority",
-        "assigned_to",
         "group",
-        "deadline",
         "created_at",
+        "deadline",
     )
 
     list_filter = (
@@ -60,69 +51,88 @@ class TaskAdmin(admin.ModelAdmin):
         "priority",
         "is_routine",
         "created_at",
+        "group",
     )
 
     search_fields = (
         "title",
         "description",
         "assigned_to__username",
-        "created_by__username",
+        "group__title",
     )
 
-    ordering = ("-created_at",)
+    autocomplete_fields = (
+        "assigned_to",
+        "group",
+        "status",
+        "created_by",
+        "parent_id",
+        "root_task",
+        "forwarded_by",
+    )
 
     readonly_fields = ("created_at", "updated_at")
 
-    inlines = [
-        CheckListInline,
-        TaskAttachmentInline,
-        TaskRoutineInline,
-    ]
-
-    fieldsets = (
-        ("Basic Info", {
-            "fields": ("title", "description", "group", "status", "priority")
-        }),
-        ("Assignment", {
-            "fields": ("assigned_to", "created_by", "can_forward")
-        }),
-        ("Timeline", {
-            "fields": ("planned_start_at", "deadline", "start_time", "end_time")
-        }),
-        ("Extra", {
-            "fields": ("parent_id", "root_task", "quality_rate", "is_routine")
-        }),
-        ("Meta", {
-            "fields": ("created_at", "updated_at")
-        }),
-    )
+    inlines = [TaskAttachmentInline, CheckListInline]
 
 
-# ----------------------
-# ATTACHMENT ADMIN (standalone)
-# ----------------------
-@admin.register(TaskAttachment)
-class TaskAttachmentAdmin(admin.ModelAdmin):
-    list_display = ("id", "file_name", "task", "uploaded_by", "file_size", "created_at")
-    search_fields = ("file_name", "task__title")
-    list_filter = ("created_at",)
-
-
-# ----------------------
-# CHECKLIST ADMIN
-# ----------------------
-@admin.register(CheckList)
-class CheckListAdmin(admin.ModelAdmin):
-    list_display = ("id", "title", "task", "is_done", "created_at")
-    list_filter = ("is_done",)
-    search_fields = ("title", "task__title")
-
-
-# ----------------------
-# TASK ROUTINE ADMIN
-# ----------------------
+# ------------------------
+# Task Routine
+# ------------------------
 @admin.register(TaskRoutine)
 class TaskRoutineAdmin(admin.ModelAdmin):
-    list_display = ("id", "task", "period", "next_run_at", "is_active")
+
+    list_display = (
+        "id",
+        "task",
+        "period",
+        "start_date",
+        "next_run_at",
+        "is_active",
+    )
+
     list_filter = ("period", "is_active")
+
     search_fields = ("task__title",)
+
+
+# ------------------------
+# Task Attachment
+# ------------------------
+@admin.register(TaskAttachment)
+class TaskAttachmentAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "id",
+        "file_name",
+        "task",
+        "uploaded_by",
+        "file_size",
+        "created_at",
+    )
+
+    search_fields = (
+        "file_name",
+        "task__title",
+    )
+
+    list_filter = ("file_type", "created_at")
+
+
+# ------------------------
+# Checklist
+# ------------------------
+@admin.register(CheckList)
+class CheckListAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "id",
+        "title",
+        "task",
+        "is_done",
+        "created_at",
+    )
+
+    list_filter = ("is_done",)
+
+    search_fields = ("title", "task__title")

@@ -12,7 +12,7 @@ urlpatterns = [
     path('emergencytask/' , EmergencyTask.as_view()),
     path('usertasks/' , UsersTask.as_view()),
     path('taskgroup/' , TaskGroupPerson.as_view()),
-    path("tasks/<int:task_id>/forward/", ForwardTaskView.as_view()),
+    path("forward/<int:task_id>/", ForwardTaskView.as_view()),
 
 
 ]
