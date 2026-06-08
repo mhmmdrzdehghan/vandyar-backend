@@ -13,12 +13,13 @@ from chat.models import Conversation , ConversationMember
 class ProjectView(ModelViewSet):
     serializer_class = ProjectSerializer
     permission_classes = [IsAuthenticated]
+    queryset = Project.objects.all()
+
 
     def perform_create(self, serializer):
         return serializer.save(created_by=self.request.user)
 
 
-    queryset = Project.objects.all()
 
 class SubProjetView(ModelViewSet):
     serializer_class = SubProjectSerializer
@@ -77,7 +78,6 @@ class SubProjetView(ModelViewSet):
 
 
 #data:
-
 class ProjectDataView(APIView):
 
     def get(self, request, *args, **kwargs):

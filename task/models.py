@@ -4,6 +4,7 @@ from account.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.conf import settings
 from project.models import SubProject
+from group.models import Group
 
 class Status(models.Model):
     title      = models.CharField(max_length=255, unique=True)
@@ -22,8 +23,8 @@ class Priority(models.TextChoices):
 
 class Task(models.Model):
 
-    subproject = models.ForeignKey(
-        SubProject,
+    group = models.ForeignKey(
+        Group,
         on_delete=models.CASCADE,
         related_name="tasks",
         null=True,

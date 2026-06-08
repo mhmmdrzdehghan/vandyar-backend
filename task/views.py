@@ -70,12 +70,13 @@ class TaskView(ModelViewSet):
 
 
             is_routine = data.get("is_routine" , False)
-            assignments_data = data.pop('assignments' , [])
             files_data = data.pop('files' , [])
             checklist_data = data.pop('checklist' , [])
 
 
             routines = None
+            routines_response = None 
+
             if is_routine:
                 routines = data.pop("routines" , [])
 
@@ -96,7 +97,6 @@ class TaskView(ModelViewSet):
             if routines != None:
                 routines_response = self.CreateRoutineTask(task,routines)
 
-            assignments_response = self.CreateAssignment(task , assignments_data)
             files_response =  self.CreateFile(task , files_data , user)
             checklist_response =  self.CreateCheklist(task , checklist_data)
 
@@ -161,21 +161,15 @@ class StatusView(ModelViewSet):
     
 
 
-# class RateTask(UpdateAPIView):
-#     serializer_class =  TaskAssignmentSerializer
-#     permission_classes = [IsAuthenticated]
-
-#     def get_queryset(self):
-#         return TaskAssignment.objects.filter(task__created_by=self.request.user , status=3)
-    
-
 
 #data :
 
 class TaskDataView(APIView):
     def get(self, request, *args, **kwargs):
-        # print(list(Task.objects.all()))
-        tasks = Task.objects.all()
+        peoject_id = request.query_params.get("project_id")
+        tasks = Task.objects.filter(group__subproject__project_id=peoject_id).select_related('status')
+
+        
 
         serializer = TaskSerializer(tasks, many=True)
 
