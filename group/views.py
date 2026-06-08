@@ -30,8 +30,7 @@ class GroupViewSet(viewsets.ModelViewSet):
 
             
             group = Group.objects.create(created_by=request.user,**validated_data)
-            admins = User.objects.filter(role = 'owner')
-            group.members.set(admins)
+            
 
 
 
@@ -52,15 +51,12 @@ class GroupViewSet(viewsets.ModelViewSet):
                 created_by=request.user
             )
 
+            admins = User.objects.filter(role = 'owner')
             
             for admin in admins :
 
-                conversation = Conversation.objects.create(
-                type="group",
-                title=title,
-                group=group,
-                created_by=admin
-            )
+                ConversationMember.objects.get_or_create(conversation=conversation,user=admin)
+            
 
 
             ConversationMember.objects.create(

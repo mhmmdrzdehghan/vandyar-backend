@@ -8,7 +8,8 @@ urlpatterns = [
         MessageView.as_view({'get': 'list', 'post': 'create'}),
     ),
 
-    path('Conversationdata/' , ConversationData.as_view())
+    path('Conversationdata/' , ConversationData.as_view()),
+
 ]
 
 

@@ -9,6 +9,8 @@ from rest_framework.response import Response
 from group.models import Group
 from django.db import transaction
 from chat.models import Conversation , ConversationMember
+from account.models import User
+
 
 class ProjectView(ModelViewSet):
     serializer_class = ProjectSerializer
@@ -42,20 +44,27 @@ class SubProjetView(ModelViewSet):
 
             sub = SubProject.objects.create(created_by = request.user ,**data)
 
+            #add member and manager in sub:
+
             if members:
                 sub.members.set(members)
 
             if managers:
                 sub.managers.set(managers)
 
-            group = Group.objects.create(title="گروه مدیریت" ,subproject=sub , created_by = request.user) 
 
+            #add memeber and manager of sub in group member:    
+
+            group = Group.objects.create(title="گروه مدیریت" ,subproject=sub , created_by = request.user) 
             group.members.set(managers)
+            group.members.set(members) 
+
             
             project = sub.project
             
             title = f"{sub.title}-{group.title}({project})"
 
+            # add members and managers and owners in chat:
 
             conversation = Conversation.objects.create(
                 type="group",
@@ -70,9 +79,19 @@ class SubProjetView(ModelViewSet):
                     user=manager,
                     is_admin=True
                 )
+
+            for member in group.members.all():
+                ConversationMember.objects.get_or_create(
+                    conversation=conversation,
+                    user=member
+                )   
+
+            admins = User.objects.filter(role = 'owner')
+            for admin in admins :
+                ConversationMember.objects.get_or_create(conversation=conversation,user=admin)
+                
   
 
-            group.members.set(members) 
 
         return Response(SubProjectSerializer(sub).data)         
 

@@ -10,6 +10,11 @@ from datetime import timedelta
 from rest_framework.views import APIView
 from project.models import SubProject
 from django.db.models import Count
+from django.utils import timezone
+from datetime import timedelta
+from account.models import User
+from account.serializer import UserSerializer
+
 
 
 class TaskView(ModelViewSet):
@@ -166,23 +171,62 @@ class StatusView(ModelViewSet):
 
 class TaskDataView(APIView):
     def get(self, request, *args, **kwargs):
-        peoject_id = request.query_params.get("project_id")
-        tasks = Task.objects.filter(group__subproject__project_id=peoject_id).select_related('status')
+        project_id = request.query_params.get("project_id")
 
-        
+        data = (
+            Task.objects
+            .filter(group__subproject__project_id=project_id)
+            .values("status__id", "status__title")
+            .annotate(count=Count("status__id"))
+        )
 
-        serializer = TaskSerializer(tasks, many=True)
-
-        return Response(serializer.data)
+        return Response(data)
          
 
 
-    
+class EmergencyTask(APIView):
+    def get(self, request):
+        now = timezone.now()
+
+        one_day_later = now + timedelta(days=1)
+
+        tasks = Task.objects.filter(
+            deadline__range=(now, one_day_later)
+        )
+
+        serializer = TaskSerializer(tasks, many=True)
+        return Response(serializer.data)
+
+
+        
+class UsersTask(APIView):
+    def get(self, request, *args, **kwargs):
+
+        project_id = request.query_params.get("project_id")
+        data =  User.objects.filter(assigned_tasks__group__subproject__project=project_id).prefetch_related('assigned_tasks')
+
+
+        response = []
+        for item in data:
+            result = {}
+            task = item.assigned_tasks.values("status__id", "status__title").annotate(count=Count("status__id"))
+
+
+            result['user'] =item.id
+            result['first_name'] =item.Profile.first_name
+            result['last_name'] =item.Profile.last_name
+            result['username'] =item.username
+            result['phone'] =item.Profile.phone
+            result['task'] =task
+
+            response.append(result)
 
 
 
         
 
+        return Response(response) 
+        
         
         
 
