@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Task , Status , TaskAttachment , CheckList , TaskRoutine
 from django.db import transaction
+from chat.models import Message
 
 
 class TaskAttachmentSerializer(serializers.ModelSerializer):
@@ -40,11 +41,19 @@ class TaskSerializer(serializers.ModelSerializer):
     files = TaskAttachmentSerializer(many=True , required=False)
     checklist = CheckListSeializer(many=True , required=False)
     routines = TaskRountineSerializer(required=False)
+    message_id = serializers.PrimaryKeyRelatedField(
+    queryset=Message.objects.all(),
+    source="message",
+    write_only=True,
+    required=False,
+    allow_null=True
+)
+
 
 
     class Meta:
         model = Task
-        fields = ['title' , 'group' ,'description', 'is_routine'  ,'planned_start_at' ,'deadline' ,'priority' , 'created_by' , 'files', 'routines' ,'checklist' ,'assigned_to' ,'status' ,'start_time' ,'end_time' ,'quality_rate' ,'parent_id' ,'root_task' ,'can_forward' ,'updated_at','created_at']
+        fields = ['title' , 'group' ,'description', 'message_id','is_routine'  ,'planned_start_at' ,'deadline' ,'priority' , 'created_by' , 'files', 'routines' ,'checklist' ,'assigned_to' ,'status' ,'start_time' ,'end_time' ,'quality_rate' ,'parent_id' ,'root_task' ,'can_forward' ,'updated_at','created_at']
         read_only_fields = ['id' , 'created_at' ,'parent_id' ,'root_task' , 'updated_at']
 
 
@@ -53,6 +62,8 @@ class StatusSerializer(serializers.ModelSerializer):
         model = Status
         fields = ['title' , 'created_at' , 'updated_at']
         read_only_fields = ['id','created_at' , 'updated_at']
+
+
 
 
 

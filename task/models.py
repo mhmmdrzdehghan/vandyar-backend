@@ -68,6 +68,14 @@ class Task(models.Model):
         blank=True
     )
 
+    forwarded_by = models.ForeignKey(
+    User,
+    on_delete=models.SET_NULL,
+    null=True,
+    blank=True,
+    related_name="forwarded_tasks"
+    )
+
     quality_rate = models.IntegerField(
         null=True,
         blank=True,

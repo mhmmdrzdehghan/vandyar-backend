@@ -1,5 +1,5 @@
 from django.urls import path , include
-from .views import TaskView , StatusView , TaskDataView , EmergencyTask , UsersTask , TaskGroupPerson
+from .views import TaskView , StatusView , TaskDataView , EmergencyTask , UsersTask , TaskGroupPerson , ForwardTaskView
 from rest_framework.routers import DefaultRouter
 router = DefaultRouter()
 router.register('task', TaskView, basename='task')
@@ -12,5 +12,7 @@ urlpatterns = [
     path('emergencytask/' , EmergencyTask.as_view()),
     path('usertasks/' , UsersTask.as_view()),
     path('taskgroup/' , TaskGroupPerson.as_view()),
+    path("tasks/<int:task_id>/forward/", ForwardTaskView.as_view()),
+
 
 ]

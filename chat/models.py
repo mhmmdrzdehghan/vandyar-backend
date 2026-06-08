@@ -1,6 +1,7 @@
 from django.db import models
 from group.models import Group
 from account.models import User
+from task.models import Task
 
 # Create your models here.
 class Conversation(models.Model):
@@ -54,6 +55,8 @@ class Message(models.Model):
     )
 
     is_task = models.BooleanField()
+
+    task = models.OneToOneField(Task, related_name='message', on_delete=models.SET_NULL , null=True , blank=True)
 
     content = models.TextField()
 
