@@ -8,11 +8,13 @@ from .serializer import GroupSerializer
 from chat.models import Conversation , ConversationMember
 from rest_framework.response import Response
 from django.db import transaction
+from account.models import User
 
 
 class GroupViewSet(viewsets.ModelViewSet):
-    # serializer_class = GroupSerializer
+    serializer_class = GroupSerializer
     permission_classes = [IsAuthenticated]
+    queryset = Group.objects.all()
 
 
     def create(self, request, *args, **kwargs):
@@ -28,6 +30,8 @@ class GroupViewSet(viewsets.ModelViewSet):
 
             
             group = Group.objects.create(created_by=request.user,**validated_data)
+            admins = User.objects.filter(role = 'owner')
+            group.members.set(admins)
 
 
 
@@ -48,11 +52,24 @@ class GroupViewSet(viewsets.ModelViewSet):
                 created_by=request.user
             )
 
+            
+            for admin in admins :
+
+                conversation = Conversation.objects.create(
+                type="group",
+                title=title,
+                group=group,
+                created_by=admin
+            )
+
+
             ConversationMember.objects.create(
                 conversation=conversation,
                 user=request.user,
                 is_admin=True
             )
+
+
 
 
             for member in group.members.all():
