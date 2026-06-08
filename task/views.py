@@ -8,12 +8,13 @@ from django.db import transaction
 from rest_framework.response import Response
 from datetime import timedelta
 from rest_framework.views import APIView
-from project.models import SubProject
-from django.db.models import Count
+from django.db.models import Count , Q
 from django.utils import timezone
 from datetime import timedelta
 from account.models import User
-from account.serializer import UserSerializer
+from group.models import Group
+from collections import defaultdict
+
 
 
 
@@ -169,69 +170,174 @@ class StatusView(ModelViewSet):
 
 #data :
 
+
 class TaskDataView(APIView):
     def get(self, request, *args, **kwargs):
         project_id = request.query_params.get("project_id")
 
+        task_filter = Q(
+            task_assignments__group__subproject__project_id=project_id
+        )
+
+        if request.user.role != "owner":
+            task_filter &= Q(task_assignments__assigned_to=request.user)
+
         data = (
-            Task.objects
-            .filter(group__subproject__project_id=project_id)
-            .values("status__id", "status__title")
-            .annotate(count=Count("status__id"))
+            Status.objects
+            .annotate(
+                count=Count(
+                    "task_assignments",
+                    filter=task_filter
+                )
+            )
+            .values(
+                "id",
+                "title",
+                "count"
+            )
         )
 
         return Response(data)
-         
-
 
 class EmergencyTask(APIView):
     def get(self, request):
         now = timezone.now()
+        project_id = request.query_params.get("project_id")
 
         one_day_later = now + timedelta(days=1)
 
         tasks = Task.objects.filter(
-            deadline__range=(now, one_day_later)
+            group__subproject__project_id=project_id,
+            deadline__range=(now, one_day_later),
         )
+
+        if request.user.role != "owner":
+            tasks = tasks.filter(assignee=request.user)
 
         serializer = TaskSerializer(tasks, many=True)
         return Response(serializer.data)
 
 
-        
+
+
+
 class UsersTask(APIView):
     def get(self, request, *args, **kwargs):
-
         project_id = request.query_params.get("project_id")
-        data =  User.objects.filter(assigned_tasks__group__subproject__project=project_id).prefetch_related('assigned_tasks')
 
+        users = User.objects.filter(
+            assigned_tasks__group__subproject__project=project_id
+        ).distinct()
 
         response = []
-        for item in data:
-            result = {}
-            task = item.assigned_tasks.values("status__id", "status__title").annotate(count=Count("status__id"))
+
+        for user in users:
+            tasks = (
+                Status.objects
+                .annotate(
+                    count=Count(
+                        "task_assignments",
+                        filter=Q(
+                            task_assignments__assigned_to=user,
+                            task_assignments__group__subproject__project=project_id
+                        )
+                    )
+                )
+                .values(
+                    "id",
+                    "title",
+                    "count"
+                )
+            )
+
+            response.append({
+                "user": user.id,
+                "first_name": user.Profile.first_name,
+                "last_name": user.Profile.last_name,
+                "username": user.username,
+                "phone": user.Profile.phone,
+                "task": list(tasks)
+            })
+
+        return Response(response)      
 
 
-            result['user'] =item.id
-            result['first_name'] =item.Profile.first_name
-            result['last_name'] =item.Profile.last_name
-            result['username'] =item.username
-            result['phone'] =item.Profile.phone
-            result['task'] =task
-
-            response.append(result)
 
 
 
-        
 
-        return Response(response) 
-        
-        
-        
+class TaskGroupPerson(APIView):
 
+    STATUSES = [
+        "شروع نشده",
+        "درحال انجام",
+        "انجام شده",
+        "کنسل شده",
+    ]
 
-        
+    def empty_status_dict(self):
+        return {status: [] for status in self.STATUSES}
+
+    def task_data(self, task):
+        return {
+            "id": task.id,
+            "title": task.title,
+            "assignee": {
+                "name": task.assigned_to.username
+            } if task.assigned_to else None,
+            "priority": task.priority,
+            "date": task.deadline,
+        }
+
+    def get(self, request, *args, **kwargs):
+
+        response = {}
+
+        # personal
+        personal = {
+            "title": "شخصی",
+            "tasks": self.empty_status_dict()
+        }
+
+        my_tasks = (
+            Task.objects
+            .select_related("status", "assigned_to")
+        )
+
+        for task in my_tasks:
+            personal["tasks"][task.status.title].append(
+                self.task_data(task)
+            )
+
+        response["personal"] = personal
+
+        # groups
+        groups = (
+            Group.objects
+            .filter(members=request.user)
+            .prefetch_related(
+                "tasks",
+                "tasks__status",
+                "tasks__assigned_to"
+            )
+        )
+
+        for group in groups:
+
+            group_data = {
+                "title": group.title,
+                "tasks": self.empty_status_dict()
+            }
+
+            for task in group.tasks.all():
+
+                group_data["tasks"][task.status.title].append(
+                    self.task_data(task)
+                )
+
+            response[group.title] = group_data
+
+        return Response(response)     
     
 
 # Create your views here.

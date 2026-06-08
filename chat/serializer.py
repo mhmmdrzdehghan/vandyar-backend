@@ -49,7 +49,9 @@ class MessageSerializer(serializers.ModelSerializer):
 
 
 class ConversationSerializer(serializers.ModelSerializer):
+    projectid = serializers.SerializerMethodField(read_only=True)
 
+    
     class Meta:
         model = Conversation
         fields = [
@@ -58,6 +60,7 @@ class ConversationSerializer(serializers.ModelSerializer):
             "title",
             "group",
             "created_by",
+            "projectid",
             "members",
             "created_at",
             "updated_at",
@@ -66,6 +69,11 @@ class ConversationSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
             "created_by",
+            "projectid",
             "created_at",
             "updated_at",
         ]
+
+
+    def get_projectid(self, instance):
+        return instance.group.subproject.project.id
