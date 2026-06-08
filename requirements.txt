@@ -1,3 +1,5 @@
+--index-url https://package-mirror.liara.ir/repository/pypi/
+
 Django>=5.0,<6.0
 channels>=4.0,<5.0
 daphne>=4.0,<5.0
