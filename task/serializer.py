@@ -10,17 +10,6 @@ class TaskAttachmentSerializer(serializers.ModelSerializer):
         fields = ['task' ,'file' , 'file_name' , 'file_path' , 'file_size' , 'file_type' ,'uploaded_by' , 'created_at' , 'updated_at']
         read_only_fields = ['id', 'task' ,'created_at' , 'updated_at']
 
-# class TaskAssignmentSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = TaskAssignment
-#         fields = ['task' , 'assigned_to' , 'status' , 
-#                  'start_time' ,
-#                 'end_time' ,'quality_rate' ,'action_log' , 
-#                 'created_at' , 'updated_at'
-#                 ]
-#         read_only_fields = ['id','task' , 'created_at' , 'updated_at']
-
-
 class CheckListSeializer(serializers.ModelSerializer):
     class Meta:
         model = CheckList
@@ -60,7 +49,7 @@ class TaskSerializer(serializers.ModelSerializer):
 class StatusSerializer(serializers.ModelSerializer):
     class Meta:
         model = Status
-        fields = ['title' , 'created_at' , 'updated_at']
+        fields = ['id','title' , 'created_at' , 'updated_at']
         read_only_fields = ['id','created_at' , 'updated_at']
 
 

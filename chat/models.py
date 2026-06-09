@@ -10,6 +10,7 @@ class Conversation(models.Model):
     type = models.CharField(max_length=10, choices=TYPE_CHOICES)
     title = models.CharField(max_length=255, blank=True, null=True)
     group = models.OneToOneField(Group,on_delete=models.CASCADE,null=True,blank=True,related_name="chat_room")
+    task  = models.OneToOneField(Task,on_delete=models.CASCADE,null=True,blank=True,related_name="chat_room")
     created_by = models.ForeignKey(User,on_delete=models.CASCADE,related_name="created_conversations")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -59,6 +59,7 @@ class ConversationSerializer(serializers.ModelSerializer):
             "type",
             "title",
             "group",
+            "task",
             "created_by",
             "projectid",
             "members",

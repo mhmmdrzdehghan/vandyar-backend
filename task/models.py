@@ -14,8 +14,7 @@ class Status(models.Model):
     def __str__(self):
         return self.title
     
-
-
+    
 class Priority(models.TextChoices):
         LOW = "low"
         MEDIUM = "medium"

@@ -55,7 +55,8 @@ class TaskView(ModelViewSet):
 
             task = Task.objects.create(**data)
 
-            message_id = data.pop("message_id") 
+            message_id = data.pop("message_id", None)
+ 
 
             if message_id:
                 message =  Message.objects.filter(id=message_id).first()
@@ -76,53 +77,49 @@ class TaskView(ModelViewSet):
             return Response(response)
         
     def update(self, request, *args, **kwargs):
-
         with transaction.atomic():
-            serializer = TaskSerializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
-
-            data = serializer.validated_data
-            user = request.user
-            data['created_by'] = user
-
-
-            is_routine = data.get("is_routine" , False)
-            files_data = data.pop('files' , [])
-            checklist_data = data.pop('checklist' , [])
-
-
-            routines = None
-            routines_response = None 
-
-            if is_routine:
-                routines = data.pop("routines" , [])
-
- 
-
 
             task = Task.objects.get(id=kwargs.get('pk'))
 
-            for attr, value in data.items():
-                setattr(task, attr, value)
+            serializer = TaskSerializer(
+                instance=task,
+                data=request.data,
+                partial=True
+            )
+            serializer.is_valid(raise_exception=True)
 
-            task.save()
-            
+            task = serializer.save()
+
+            data = serializer.validated_data
+
+            is_routine = data.get("is_routine", False)
+            files_data = data.get('files', [])
+            checklist_data = data.get('checklist', [])
+
+            routines = None
+            routines_response = None
+
+            if is_routine:
+                routines = data.get("routines", [])
+
             TaskRoutine.objects.filter(task=task).delete()
             TaskAttachment.objects.filter(task=task).delete()
             CheckList.objects.filter(task=task).delete()
 
-            if routines != None:
-                routines_response = self.CreateRoutineTask(task,routines)
+            if routines is not None:
+                routines_response = self.CreateRoutineTask(task, routines)
 
-            files_response =  self.CreateFile(task , files_data , user)
-            checklist_response =  self.CreateCheklist(task , checklist_data)
+            files_response = self.CreateFile(task, files_data, request.user)
+            checklist_response = self.CreateCheklist(task, checklist_data)
 
-            response = {'task':TaskSerializer(task).data  ,  'file':TaskAttachmentSerializer(files_response , many=True).data,  'checklist':CheckListSeializer(checklist_response , many=True).data  ,'routine':TaskRountineSerializer(routines_response).data}
+            response = {
+                'task': TaskSerializer(task).data,
+                'file': TaskAttachmentSerializer(files_response, many=True).data,
+                'checklist': CheckListSeializer(checklist_response, many=True).data,
+                'routine': TaskRountineSerializer(routines_response).data if routines_response else None
+            }
 
-
-
-            return Response(response)            
-
+        return Response(response)
     def CreateRoutineTask(self ,task ,data):
         period = data["period"]
         start_date = data["start_date"]
@@ -218,7 +215,7 @@ class ForwardTaskView(APIView):
                 deadline=task.deadline,
 
                 assigned_to=assigned_to ,
-                status_id=1,
+                status_id  =1,
 
                 start_time=None,
                 end_time=None,
@@ -332,14 +329,25 @@ class TaskGroupPerson(APIView):
     ]
 
     def empty_status_dict(self):
-        return {status: [] for status in self.STATUSES}
+        return {
+            status.title: []
+            for status in Status.objects.all()
+        }
 
     def task_data(self, task):
         return {
             "id": task.id,
             "title": task.title,
-            "assignee": {
-                "name": task.assigned_to.username
+            "assigned": {
+                "name": task.assigned_to.username,
+                "first_nme": task.assigned_to.Profile.first_name,
+                "last_name": task.assigned_to.Profile.last_name,
+                "avatar": (
+                    task.assigned_to.Profile.avatar.url
+                    if task.assigned_to.Profile.avatar
+                    else None
+                ),
+
             } if task.assigned_to else None,
             "priority": task.priority,
             "date": task.deadline,
@@ -374,7 +382,8 @@ class TaskGroupPerson(APIView):
             .prefetch_related(
                 "tasks",
                 "tasks__status",
-                "tasks__assigned_to"
+                "tasks__assigned_to",
+                "subproject"
             )
         )
 
@@ -382,7 +391,8 @@ class TaskGroupPerson(APIView):
 
             group_data = {
                 "title": group.title,
-                "tasks": self.empty_status_dict()
+                "tasks": self.empty_status_dict(),
+                "subproject":group.subproject.title
             }
 
             for task in group.tasks.all():
@@ -392,10 +402,47 @@ class TaskGroupPerson(APIView):
                 )
 
             response[group.title] = group_data
+            
 
         return Response(response)     
     
 
+
+class TaskGroupDefined(APIView):
+    def get(self, request, group_id):
+
+        statuses = Status.objects.all()
+
+        data = {
+            status.title: []
+            for status in statuses
+        }
+
+        tasks = (
+            Task.objects
+            .filter(group_id=group_id)
+            .select_related("status", "assigned_to")
+        )
+
+        for task in tasks:
+            data[task.status.title].append({
+                "id": task.id,
+                "title": task.title,
+                "assigned": {
+                    "name": task.assigned_to.username,
+                    "first_name": task.assigned_to.Profile.first_name,
+                    "last_name": task.assigned_to.Profile.last_name,
+                    "avatar": (
+                        task.assigned_to.Profile.avatar.url
+                        if task.assigned_to.Profile.avatar
+                        else None
+                    ),
+                } if task.assigned_to else None,
+                "priority": task.priority,
+                "date": task.deadline,
+            })
+
+        return Response(data)     
 
 
 # Create your views here.

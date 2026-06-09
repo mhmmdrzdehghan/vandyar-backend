@@ -4,7 +4,7 @@ from .views import MessageView , ConversationData
 
 urlpatterns = [
     path(
-        'conversations/<int:conversation_id>/messages/',
+        'messages/<int:conversation_id>/',
         MessageView.as_view({'get': 'list', 'post': 'create'}),
     ),
 
