@@ -13,7 +13,7 @@ from django.utils import timezone
 from datetime import timedelta
 from account.models import User
 from group.models import Group
-from chat.models import Message
+from chat.models import Message , Conversation
 from django.shortcuts import get_object_or_404
 from rest_framework import status as s 
 
@@ -63,6 +63,10 @@ class TaskView(ModelViewSet):
                 message.is_task = True
                 message.task = task
                 message.save()
+
+
+            title = f" {task.title}-چت"
+
             
             if routines != None:
 
@@ -70,6 +74,8 @@ class TaskView(ModelViewSet):
 
             files_response     =  self.CreateFile(task , files_data , user)
             checklist_response =  self.CreateCheklist(task , checklist_data)
+        
+            conversation       = self.CreateChat(title ,task , user)
 
 
             response = {'task':TaskSerializer(task).data ,  'file':TaskAttachmentSerializer(files_response , many=True).data,  'checklist':CheckListSeializer(checklist_response , many=True).data  ,'routine':TaskRountineSerializer(routines_response).data}
@@ -120,6 +126,7 @@ class TaskView(ModelViewSet):
             }
 
         return Response(response)
+    
     def CreateRoutineTask(self ,task ,data):
         period = data["period"]
         start_date = data["start_date"]
@@ -158,6 +165,15 @@ class TaskView(ModelViewSet):
 
         return response   
   
+    def CreateChat(self ,title ,task , user):
+        conversation = Conversation.objects.create(
+            type="group",
+            title=title,
+            task=task,
+            created_by=user
+        )
+
+        return conversation
 
     def CreateCheklist(self ,task, checklist_data):
         response = []
@@ -236,6 +252,7 @@ class ForwardTaskView(APIView):
 
 
 #data :
+
 class UsersTask(APIView):
     def get(self, request, *args, **kwargs):
 
@@ -247,40 +264,52 @@ class UsersTask(APIView):
 
         for user in users:
 
+            task_filter = Q(task_assignments__assigned_to=user)
+
+            # optional project filter
+            if project_id:
+                task_filter &= Q(
+                    task_assignments__group__subproject__project_id=project_id
+                )
+
             tasks = (
                 Status.objects
                 .annotate(
                     count=Count(
                         "task_assignments",
-                        filter=Q(
-                            task_assignments__assigned_to=user,
-                            task_assignments__group__subproject__project=project_id
-                        )
+                        filter=task_filter
                     )
                 )
                 .values("id", "title", "count")
             )
 
+            profile = getattr(user, "Profile", None)
+
             response.append({
                 "user": user.id,
-                "first_name": user.Profile.first_name,
-                "last_name": user.Profile.last_name,
+                "first_name": getattr(profile, "first_name", None),
+                "last_name": getattr(profile, "last_name", None),
                 "username": user.username,
-                "phone": user.Profile.phone,
+                "phone": getattr(profile, "phone", None),
                 "task": list(tasks)
             })
 
         return Response(response)
-    
+
 
 class TaskDataView(APIView):
     def get(self, request, *args, **kwargs):
         project_id = request.query_params.get("project_id")
 
-        task_filter = Q(
-            task_assignments__group__subproject__project_id=project_id
-        )
+        task_filter = Q()
 
+        # optional project filter
+        if project_id:
+            task_filter &= Q(
+                task_assignments__group__subproject__project_id=project_id
+            )
+
+        # permission filter
         if request.user.role != "owner":
             task_filter &= Q(task_assignments__assigned_to=request.user)
 
@@ -292,11 +321,7 @@ class TaskDataView(APIView):
                     filter=task_filter
                 )
             )
-            .values(
-                "id",
-                "title",
-                "count"
-            )
+            .values("id", "title", "count")
         )
 
         return Response(data)
@@ -304,20 +329,29 @@ class TaskDataView(APIView):
 class EmergencyTask(APIView):
     def get(self, request):
         now = timezone.now()
+        two_days_later = now + timedelta(days=2)
+
         project_id = request.query_params.get("project_id")
 
-        one_day_later = now + timedelta(days=1)
-
+        # base query
         tasks = Task.objects.filter(
-            group__subproject__project_id=project_id,
-            deadline__range=(now, one_day_later),
-        )
+            deadline__gte=now,
+            deadline__lte=two_days_later,
+        ).exclude(status__id=3)
 
+        # optional filter
+        if project_id:
+            tasks = tasks.filter(
+                group__subproject__project_id=project_id
+            )
+
+        # permission filter
         if request.user.role != "owner":
-            tasks = tasks.filter(assignee=request.user)
+            tasks = tasks.filter(assigned_to=request.user)
 
         serializer = TaskSerializer(tasks, many=True)
         return Response(serializer.data)
+
 
 class TaskGroupPerson(APIView):
 
@@ -390,6 +424,7 @@ class TaskGroupPerson(APIView):
         for group in groups:
 
             group_data = {
+                "groupid":group.id,
                 "title": group.title,
                 "tasks": self.empty_status_dict(),
                 "subproject":group.subproject.title

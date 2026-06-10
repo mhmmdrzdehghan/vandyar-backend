@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'project',
     'chat',
     'group',
+    'channels'
 
 ]
 
@@ -160,37 +161,21 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 
-# import os
-# from pathlib import Path
 
-# BASE_DIR = Path(__file__).resolve().parent.parent
+REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
+REDIS_PORT = os.environ.get("REDIS_PORT", "6379")
 
-# LOGGING = {
-#     "version": 1,
-#     "disable_existing_loggers": False,
+REDIS_URL = f"redis://{REDIS_HOST}:{REDIS_PORT}"
 
-#     "formatters": {
-#         "verbose": {
-#             "format": "{levelname} {asctime} {module} {message}",
-#             "style": "{",
-#         },
-#     },
 
-#     "handlers": {
-#         "file": {
-#             "level": "INFO",
-#             "class": "logging.FileHandler",
-#             "filename": os.path.join(BASE_DIR, "logs/django.log"),
-#             "formatter": "verbose",
-#         },
-#     },
-
-#     "root": {
-#         "handlers": ["file"],
-#         "level": "INFO",
-#     },
-# }
-
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [(REDIS_HOST, int(REDIS_PORT))],
+        },
+    },
+}
 
 
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
