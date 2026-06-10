@@ -1,9 +1,14 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
+
 import json
 
-from .models import Message, Conversation
-from account.models import User
+from .models import (
+    Message,
+    Conversation,
+    MessageReaction,
+)
+
 
 class ChatConsumer(AsyncWebsocketConsumer):
 
@@ -14,11 +19,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         print("CONNECTED:", self.room_group_name)
 
-        print(dict(self.scope["headers"]))
-
-        print(self.scope["user"])
-        print(self.scope["user"].is_authenticated)
-
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
@@ -26,72 +26,171 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         await self.accept()
 
-        await self.channel_layer.group_send(
-            self.room_group_name,
-            {
-                "type": "chat_message",
-                "message": "CONNECT TEST",
-                "message_id": 0,
-                "messag_istask": False,
-                "message_task": None,
-            }
-        )
-
-        
     async def receive(self, text_data):
-        print("SENDING GROUP:", self.room_group_name)
-        
+
         data = json.loads(text_data)
 
+        event = data.get("event")
+
+        if event == "message":
+            await self.handle_message(data)
+
+        elif event == "reaction":
+            await self.handle_reaction(data)
+
+    async def handle_message(self, data):
+
         message_text = data.get("message")
+
         user = self.scope["user"]
 
-        
-
-        message = await self.save_message(user, message_text)
-
-        if not message:
+        if not user.is_authenticated:
             return
+
+        if not message_text:
+            return
+
+        message = await self.save_message(
+            user=user,
+            message_text=message_text
+        )
+
+        await self.channel_layer.group_send(
+        self.room_group_name,
+        {
+            "type": "chat_message",
+            "event": "message",
+            "message": message["content"],
+            "message_id": message["id"],
+            "groupid": message["group_id"],
+            "user_id": user.id,
+            "is_task": message["is_task"],
+            "task_id": message["task_id"],
+        }
+    )
+
+    async def handle_reaction(self, data):
+
+        user = self.scope["user"]
+
+        if not user.is_authenticated:
+            return
+
+        message_id = data.get("message_id")
+        reaction = data.get("reaction")
+
+        if not message_id or not reaction:
+            return
+
+        result = await self.save_reaction(
+            user=user,
+            message_id=message_id,
+            reaction=reaction
+        )
 
         await self.channel_layer.group_send(
             self.room_group_name,
             {
-                "type": "chat_message",
-                "message": message_text,
+                "type": "reaction_event",
+                "event": "reaction",
+                "message_id": message_id,
                 "user_id": user.id,
-                "message_id": message.id,
-                "messag_istask": message.is_task,
-                "message_task": message.task,
+                "reaction": reaction,
+                "deleted": result["deleted"],
             }
         )
 
     async def chat_message(self, event):
-        try:
-            print("🔥 CHAT MESSAGE RECEIVED:", event)
 
-            await self.send(text_data=json.dumps({
-                "message": event.get("message"),
-                "user_id": event.get("user_id"),
-                "message_id": event.get("message_id"),
-                "messag_istask": event.get("messag_istask"),
-                "message_task": event.get("message_task"),
-            }))
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "event": event["event"],
+                    "message": event["message"],
+                    "message_id": event["message_id"],
+                    "groupid":event["groupid"],
+                    "user_id": event["user_id"],
+                    "is_task": event["is_task"],
+                    "task_id": event["task_id"],
+                }
+            )
+        )
 
-        except Exception as e:
-            print("❌ CHAT MESSAGE ERROR:", e)
+    async def reaction_event(self, event):
+
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "event": event["event"],
+                    "message_id": event["message_id"],
+                    "user_id": event["user_id"],
+                    "reaction": event["reaction"],
+                    "deleted": event["deleted"],
+                }
+            )
+        )
 
     @database_sync_to_async
     def save_message(self, user, message_text):
-        conversation = Conversation.objects.get(id=self.conversation_id)
 
-        return Message.objects.create(
-            conversation=conversation,
-            sender_id=user.id,
-            content=message_text,
-            is_task=False
+        conversation = Conversation.objects.get(
+            id=self.conversation_id
         )
 
+        message = Message.objects.create(
+        conversation=conversation,
+        sender=user,
+        content=message_text,
+        is_task=False
+    )
+
+        return {
+            "id": message.id,
+            "content": message.content,
+            "is_task": message.is_task,
+            "task_id": message.task_id,
+            "group_id": conversation.group_id,
+        }
+
+    @database_sync_to_async
+    def save_reaction(self, user, message_id, reaction):
+
+        message = Message.objects.get(id=message_id)
+
+        existing = MessageReaction.objects.filter(
+            message=message,
+            user=user
+        ).first()
+
+        if existing:
+
+            if existing.reaction == reaction:
+
+                existing.delete()
+
+                return {
+                    "deleted": True
+                }
+
+            existing.reaction = reaction
+            existing.save()
+
+            return {
+                "deleted": False
+            }
+
+        MessageReaction.objects.create(
+            message=message,
+            user=user,
+            reaction=reaction
+        )
+
+        return {
+            "deleted": False
+        }
+
     async def disconnect(self, close_code):
+
         await self.channel_layer.group_discard(
             self.room_group_name,
             self.channel_name

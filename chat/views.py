@@ -44,6 +44,33 @@ class GroupConversationListView(APIView):
         return Response(serializer.data)
 
 
+class ConversationMessagesAPIView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, conversation_id):
+
+        if not Conversation.objects.filter(
+            id=conversation_id,
+            members__user=request.user
+        ).exists():
+            return Response({"detail": "Forbidden"}, status=403)
+
+        messages = Message.objects.filter(
+            conversation_id=conversation_id
+        ).select_related(
+            "sender",
+            "task"
+        ).prefetch_related(
+            "reactions__user"
+        ).order_by("created_at")
+
+        serializer = MessageSerializer(messages, many=True)
+
+        return Response(serializer.data)
+
+
+
 
 class ConversationData(APIView):
     def get(self, request, *args, **kwargs):

@@ -4,7 +4,9 @@ from chat.serializer import ConversationSerializer
 
 class GroupSerializer(serializers.ModelSerializer):
 
-    chat_room = ConversationSerializer(read_only=True)
+    chat_room      = ConversationSerializer(read_only=True)
+    projectname    = serializers.SerializerMethodField(read_only=True)
+    subprojectname = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Group
@@ -14,6 +16,8 @@ class GroupSerializer(serializers.ModelSerializer):
             'description',
             "chat_room",
             'subproject',
+            "projectname",
+            "subprojectname",
             'members',
             'created_by',
             'created_at',
@@ -26,3 +30,14 @@ class GroupSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
+
+
+    def get_projectname(self, instance):
+        if instance.subproject and instance.subproject.project:
+            return instance.subproject.project.title
+        return None
+
+    def get_subprojectname(self, instance):
+        if instance.subproject:
+            return instance.subproject.title
+        return None

@@ -128,7 +128,7 @@ class TaskRoutine(models.Model):
     task = models.OneToOneField(
         Task,
         on_delete=models.CASCADE,
-        related_name="routine"
+        related_name="routines"
     )
 
     period = models.CharField(
@@ -162,7 +162,7 @@ class TaskAttachment(models.Model):
     task = models.ForeignKey(
         Task,
         on_delete=models.CASCADE,
-        related_name="attachments"
+        related_name="files"
     )
 
     file = models.FileField(
@@ -201,7 +201,7 @@ class TaskAttachment(models.Model):
         return self.file_name
 
 class CheckList(models.Model):
-    task  = models.ForeignKey(Task, on_delete=models.CASCADE , related_name='check_lists')  
+    task  = models.ForeignKey(Task, on_delete=models.CASCADE , related_name='checklist')  
     title = models.CharField(max_length=255)
     is_done = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

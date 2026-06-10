@@ -1,11 +1,20 @@
 from rest_framework import serializers
-from .models import Conversation, ConversationMember, Message
+from .models import Conversation, ConversationMember, Message , MessageReaction
 from account.models import User
+from account.serializer import UserSerializer
+
+
+
+class MessageReactionSerializer(serializers.ModelSerializer):
+
+
+    class Meta:
+        model = MessageReaction
+        fields = ["id", "message" ,"user", "reaction", "created_at"]
+        read_only_fields = ["id" , "user" , "created_at"]
 
 
 class ConversationMemberSerializer(serializers.ModelSerializer):
-
-
     class Meta:
         model = ConversationMember
         fields = [
@@ -27,6 +36,9 @@ class ConversationMemberSerializer(serializers.ModelSerializer):
 
 class MessageSerializer(serializers.ModelSerializer):
 
+    reactions = MessageReactionSerializer(read_only=True , many=True)
+    sender    = UserSerializer(read_only=True)
+
     class Meta:
         model = Message
         fields = [
@@ -34,6 +46,7 @@ class MessageSerializer(serializers.ModelSerializer):
             "conversation",
             "sender",
             "is_task",
+            "reactions",
             "content",
             "created_at",
             "updated_at"
@@ -42,6 +55,8 @@ class MessageSerializer(serializers.ModelSerializer):
             "id",
             "conversation",
             "sender",
+            "reactions",
+            
             "created_at",
             "updated_at"
         ]

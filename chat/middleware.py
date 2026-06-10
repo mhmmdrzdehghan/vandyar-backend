@@ -1,3 +1,4 @@
+from urllib.parse import parse_qs
 from django.contrib.auth.models import AnonymousUser
 from channels.db import database_sync_to_async
 from rest_framework.authtoken.models import Token
@@ -19,22 +20,31 @@ class TokenAuthMiddleware:
 
     async def __call__(self, scope, receive, send):
 
-        headers = dict(scope["headers"])
-
-        auth_header = headers.get(b"authorization")
-
         scope["user"] = AnonymousUser()
 
-        if auth_header:
+        token = None
 
-            auth_header = auth_header.decode()
+        # 1️⃣ Query string FIRST (WebSocket browser / postman)
+        query_string = scope.get("query_string", b"").decode()
+        query_params = parse_qs(query_string)
 
-            auth_parts = auth_header.split()
+        if "token" in query_params:
+            token = query_params["token"][0]
 
-            if len(auth_parts) == 2:
+        # 2️⃣ Fallback to headers (Postman)
+        if not token:
+            headers = dict(scope.get("headers", []))
+            auth_header = headers.get(b"authorization")
 
-                token_key = auth_parts[1]
+            if auth_header:
+                auth_header = auth_header.decode()
+                parts = auth_header.split()
 
-                scope["user"] = await get_user(token_key)
+                if len(parts) == 2:
+                    token = parts[1]
+
+        # 3️⃣ Authenticate user
+        if token:
+            scope["user"] = await get_user(token)
 
         return await self.inner(scope, receive, send)
