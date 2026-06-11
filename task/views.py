@@ -463,6 +463,7 @@ class TaskGroupDefined(APIView):
         for task in tasks:
             data[task.status.title].append({
                 "id": task.id,
+                "groupid":task.group.id,
                 "title": task.title,
                 "assigned": {
                     "name": task.assigned_to.username,
