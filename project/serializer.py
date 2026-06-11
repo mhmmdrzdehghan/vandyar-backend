@@ -4,7 +4,7 @@ from group.serializer import GroupSerializer
 
 
 class SubProjectSerializer(serializers.ModelSerializer):
-    groups = GroupSerializer(many=True , read_only=True)
+    groups = GroupSerializer(many=True ,required=False)
     class Meta:
         model = SubProject
         fields = [
@@ -22,7 +22,6 @@ class SubProjectSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
             "created_by",
-            "groups",
             "created_at",
             "updated_at",
         ]

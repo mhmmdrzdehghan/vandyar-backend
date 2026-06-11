@@ -16,6 +16,7 @@ from group.models import Group
 from chat.models import Message , Conversation
 from django.shortcuts import get_object_or_404
 from rest_framework import status as s 
+from chat.serializer import MessageSerializer
 
 
 
@@ -52,14 +53,14 @@ class TaskView(ModelViewSet):
             if is_routine:
                 routines = data.pop("routines" , [])
 
+            message_id = data.pop("message_id", None)
+
+
 
             task = Task.objects.create(**data)
 
-            message_id = data.pop("message_id", None)
- 
-
             if message_id:
-                message =  Message.objects.filter(id=message_id).first()
+                message =  Message.objects.filter(id=message_id.id).first()
                 message.is_task = True
                 message.task = task
                 message.save()

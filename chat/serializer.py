@@ -38,6 +38,8 @@ class MessageSerializer(serializers.ModelSerializer):
 
     reactions = MessageReactionSerializer(read_only=True , many=True)
     sender    = UserSerializer(read_only=True)
+    groupid   = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Message
@@ -47,6 +49,7 @@ class MessageSerializer(serializers.ModelSerializer):
             "sender",
             "is_task",
             "reactions",
+            "groupid",
             "content",
             "created_at",
             "updated_at"
@@ -56,11 +59,13 @@ class MessageSerializer(serializers.ModelSerializer):
             "conversation",
             "sender",
             "reactions",
-            
+            "groupid",
             "created_at",
             "updated_at"
         ]
 
+    def get_groupid(self, obj):
+        return obj.conversation.group_id
 
 
 class ConversationSerializer(serializers.ModelSerializer):

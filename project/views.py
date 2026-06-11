@@ -23,78 +23,90 @@ class ProjectView(ModelViewSet):
 
 
 
+
+
 class SubProjetView(ModelViewSet):
     serializer_class = SubProjectSerializer
     permission_classes = [IsAuthenticated]
-
     queryset = SubProject.objects.all()
 
-    def perform_create(self, serializer):
-        return serializer.save(created_by=self.request.user)
-    
     def create(self, request, *args, **kwargs):
+
         with transaction.atomic():
-            serializer = SubProjectSerializer(data=request.data)
+
+            serializer = self.get_serializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            data =  serializer.validated_data
 
-            members = data.pop('members',[])
-            managers = data.pop('managers',[])
+            data = serializer.validated_data
 
+            members = data.pop("members", [])
+            managers = data.pop("managers", [])
+            groups = data.pop("groups", [])
 
-            sub = SubProject.objects.create(created_by = request.user ,**data)
-
-            #add member and manager in sub:
-
-            if members:
-                sub.members.set(members)
-
-            if managers:
-                sub.managers.set(managers)
-
-
-            #add memeber and manager of sub in group member:    
-
-            group = Group.objects.create(title="گروه مدیریت" ,subproject=sub , created_by = request.user) 
-            group.members.set(managers)
-            group.members.set(members) 
-
-            
-            project = sub.project
-            
-            title = f"{sub.title}-{group.title}({project})"
-
-            # add members and managers and owners in chat:
-
-            conversation = Conversation.objects.create(
-                type="group",
-                title=title,
-                group=group,
-                created_by=request.user
+            sub = SubProject.objects.create(
+                created_by=request.user,
+                **data
             )
 
-            for manager in sub.managers.all():
-                ConversationMember.objects.get_or_create(
-                    conversation=conversation,
-                    user=manager,
-                    is_admin=True
+            # add members and managers to subproject
+            sub.members.set(members)
+            sub.managers.set(managers)
+
+            owners = User.objects.filter(role="owner")
+
+            # create groups and conversations
+            for group_data in groups:
+
+                group = Group.objects.create(
+                    title=group_data.title,
+                    description=group_data.description,
+                    subproject=sub,
+                    created_by=request.user
                 )
 
-            for member in group.members.all():
-                ConversationMember.objects.get_or_create(
-                    conversation=conversation,
-                    user=member
-                )   
-
-            admins = User.objects.filter(role = 'owner')
-            for admin in admins :
-                ConversationMember.objects.get_or_create(conversation=conversation,user=admin)
-                
-  
+                # add both managers and members
+                group.members.add(*members)
+                group.members.add(*managers)
 
 
-        return Response(SubProjectSerializer(sub).data)         
+                conversation = Conversation.objects.create(
+                    type="group",
+                    title=f"{group.title}-چت",
+                    group=group,
+                    created_by=request.user
+                )
 
+                # managers -> admins
+                for manager in managers:
+                    ConversationMember.objects.get_or_create(
+                        conversation=conversation,
+                        user=manager,
+                        defaults={
+                            "is_admin": True
+                        }
+                    )
+
+                # group members
+                for member in group.members.all():
+                    ConversationMember.objects.get_or_create(
+                        conversation=conversation,
+                        user=member
+                    )
+
+                # owners
+                for owner in owners:
+                    ConversationMember.objects.get_or_create(
+                        conversation=conversation,
+                        user=owner,
+                        defaults={
+                            "is_admin": True
+                        }
+                    )
+
+        return Response(
+            self.get_serializer(sub).data,
+            status=status.HTTP_201_CREATED
+        )
 
 #data:
 class ProjectDataView(APIView):
