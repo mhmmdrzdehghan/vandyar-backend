@@ -65,8 +65,14 @@ class SubProjetView(ModelViewSet):
                 )
 
                 # add both managers and members
+
+                group_members = group_data.get('members', [])
+
                 group.members.add(*members)
                 group.members.add(*managers)
+                group.members.add(group_members)
+
+                sub.members.add(*group_members)
 
 
                 conversation = Conversation.objects.create(

@@ -8,7 +8,7 @@ class TaskAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = TaskAttachment
         fields = ['task' ,'file' , 'file_name' , 'file_path' , 'file_size' , 'file_type' ,'uploaded_by' , 'created_at' , 'updated_at']
-        read_only_fields = ['id', 'task' ,'created_at' , 'updated_at']
+        read_only_fields = ['id', 'task', 'file_name' , 'file_path' , 'file_size' , 'file_type','uploaded_by' ,'created_at' , 'updated_at']
 
 class CheckListSeializer(serializers.ModelSerializer):
     class Meta:
@@ -26,7 +26,7 @@ class TaskRountineSerializer(serializers.ModelSerializer):
 
 class TaskSerializer(serializers.ModelSerializer):
     
-    files = TaskAttachmentSerializer(many=True , required=False)
+    files = TaskAttachmentSerializer(many=True, required=False)
     checklist = CheckListSeializer(many=True , required=False)
     routines = TaskRountineSerializer(required=False)
     message_id = serializers.PrimaryKeyRelatedField(
@@ -51,7 +51,7 @@ class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
         fields = ['id' ,'title' , 'name' ,'projectname','group_detail' ,'group' ,'description', 'message_id','is_routine'  ,'planned_start_at' ,'deadline' ,'priority' , 'created_by' , 'files', 'routines' ,'checklist' ,'assigned_to' ,'status' ,'start_time' ,'end_time' ,'quality_rate' ,'parent_id' ,'root_task' ,'can_forward' ,'updated_at','created_at']
-        read_only_fields = ['id','projectname','group_detail', 'name' ,'created_at' ,'parent_id' ,'root_task' , 'updated_at']
+        read_only_fields = ['id','projectname' ,'group_detail', 'name' ,'created_at' ,'parent_id' ,'root_task' , 'updated_at']
 
     def get_name(self, instance):
         full_name = f" {instance.assigned_to.Profile.first_name} {instance.assigned_to.Profile.last_name}"

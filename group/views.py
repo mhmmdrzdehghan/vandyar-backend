@@ -32,17 +32,18 @@ class GroupViewSet(viewsets.ModelViewSet):
             group = Group.objects.create(created_by=request.user,**validated_data)
             
 
-
-
             if members:
                 group.members.set(members)
 
+            subproject = group.subproject
+
+            for member in members:
+                if not subproject.members.filter(id=member.id).exists():
+                    subproject.members.add(member)    
 
 
-            sub = group.subproject
-            project = sub.project
             
-            title = f"{sub.title}-{group.title}({project})"
+            title = f"{group.title}-چت"
 
             conversation = Conversation.objects.create(
                 type="group",
