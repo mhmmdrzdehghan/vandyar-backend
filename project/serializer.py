@@ -1,10 +1,21 @@
 from rest_framework import serializers
 from .models import Project, SubProject
 from group.serializer import GroupSerializer
+from group.models import Group
 
+
+class GroupCreateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Group
+        fields = [
+            "title",
+            "description",
+            "members"
+        ]
 
 class SubProjectSerializer(serializers.ModelSerializer):
-    groups = GroupSerializer(many=True ,required=False)
+    groups = GroupCreateSerializer(many=True ,required=False)
     class Meta:
         model = SubProject
         fields = [

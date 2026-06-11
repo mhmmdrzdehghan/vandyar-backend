@@ -10,7 +10,7 @@ from group.models import Group
 from django.db import transaction
 from chat.models import Conversation , ConversationMember
 from account.models import User
-
+from rest_framework import status
 
 class ProjectView(ModelViewSet):
     serializer_class = ProjectSerializer
@@ -58,8 +58,8 @@ class SubProjetView(ModelViewSet):
             for group_data in groups:
 
                 group = Group.objects.create(
-                    title=group_data.title,
-                    description=group_data.description,
+                    title=group_data.get('title'),
+                    description=group_data.get('description'),
                     subproject=sub,
                     created_by=request.user
                 )

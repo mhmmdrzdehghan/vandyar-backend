@@ -48,6 +48,7 @@ class MessageSerializer(serializers.ModelSerializer):
             "conversation",
             "sender",
             "is_task",
+            "task",
             "reactions",
             "groupid",
             "content",
@@ -59,6 +60,7 @@ class MessageSerializer(serializers.ModelSerializer):
             "conversation",
             "sender",
             "reactions",
+            "task",
             "groupid",
             "created_at",
             "updated_at"

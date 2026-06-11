@@ -13,6 +13,6 @@ urlpatterns = [
     path('usertasks/' , UsersTask.as_view()),
     path('taskgroup/' , TaskGroupPerson.as_view()),
     path("forward/<int:task_id>/", ForwardTaskView.as_view()),
-     path("taskgroupdefined/<int:group_id>/",TaskGroupDefined.as_view(),name="taskgroupdefined"
+     path("taskgroupdefined/<int:chat_id>/",TaskGroupDefined.as_view(),name="taskgroupdefined"
     ),
 ]
