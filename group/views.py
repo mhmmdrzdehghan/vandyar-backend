@@ -56,7 +56,7 @@ class GroupViewSet(viewsets.ModelViewSet):
             
             for admin in admins :
 
-                ConversationMember.objects.get_or_create(conversation=conversation,user=admin)
+                ConversationMember.objects.get_or_create(conversation=conversation,user=admin , is_admin=True)
             
 
 

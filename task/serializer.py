@@ -26,14 +26,16 @@ class TaskRountineSerializer(serializers.ModelSerializer):
 
 class TaskSerializer(serializers.ModelSerializer):
     
-    files = TaskAttachmentSerializer(many=True, required=False)
-    checklist = CheckListSeializer(many=True , required=False)
-    routines = TaskRountineSerializer(required=False)
+    files = TaskAttachmentSerializer(many=True,  read_only=True)
+    checklist = CheckListSeializer(many=True ,  read_only=True)
+    routines = TaskRountineSerializer( read_only=True)
     message_id = serializers.PrimaryKeyRelatedField(
         queryset=Message.objects.all(),
         write_only=True,
         required=False
     )
+
+    conversations_id = serializers.SerializerMethodField()
 
     group_detail = GroupSerializer(
             source='group',
@@ -50,8 +52,22 @@ class TaskSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Task
-        fields = ['id' ,'title' , 'name','voice' ,'projectname','group_detail' ,'group' ,'description', 'message_id','is_routine'  ,'planned_start_at' ,'deadline' ,'priority' , 'created_by' , 'files', 'routines' ,'checklist' ,'assigned_to' ,'status' ,'start_time' ,'end_time' ,'quality_rate' ,'parent_id' ,'root_task' ,'can_forward' ,'updated_at','created_at']
-        read_only_fields = ['id','projectname' ,'group_detail', 'name' ,'created_at' ,'parent_id' ,'root_task' , 'updated_at']
+        fields = [
+                  'id' ,'title' , 'name','voice' ,'projectname' ,
+                  'conversations_id','group_detail' ,'group' ,
+                  'description', 'message_id','is_routine'  ,
+                  'planned_start_at' ,'deadline' ,'priority' , 
+                  'created_by' , 'files', 'routines' ,'checklist' 
+                  ,'assigned_to' ,'status' ,'start_time' 
+                  ,'end_time' ,'quality_rate' ,'parent_id' 
+                  ,'root_task' ,'can_forward' ,'updated_at','created_at'
+
+                ]
+        read_only_fields = [
+                            'id','projectname' ,'group_detail',
+                            'conversations_id' ,'name' ,'created_at' 
+                            ,'parent_id' ,'root_task' , 'updated_at'
+                            ]
 
     def get_name(self, instance):
         full_name = f" {instance.assigned_to.Profile.first_name} {instance.assigned_to.Profile.last_name}"
@@ -59,6 +75,10 @@ class TaskSerializer(serializers.ModelSerializer):
     
     def get_projectname(self, instance):
         return instance.group.subproject.project.title
+    
+    def get_conversations_id(self, instance):
+        return instance.chat_room.id
+
 
 class StatusSerializer(serializers.ModelSerializer):
     class Meta:

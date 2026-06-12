@@ -101,7 +101,7 @@ class Task(models.Model):
     )
 
     voice = models.FileField(
-        upload_to="voice/",
+        upload_to="tasks/voices/",
         null=True,
         blank=True
     )
