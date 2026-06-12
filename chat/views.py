@@ -73,13 +73,22 @@ class ConversationMessagesAPIView(APIView):
 
 
 class ConversationData(APIView):
-    def get(self, request, *args, **kwargs):
+    permission_classes = [IsAuthenticated]
 
+    def get(self, request):
 
-        conversations = Conversation.objects.filter(
-            members__user=request.user
-        ).distinct()
+        conversations = (
+            Conversation.objects
+            .filter(members__user=request.user ,group__isnull=False)
+            .select_related("created_by", "group", "task")
+            .distinct()
+        )
 
-        return Response(ConversationSerializer(conversations , many=True).data)
+        serializer = ConversationSerializer(
+            conversations,
+            many=True
+        )
+
+        return Response(serializer.data)
         
     

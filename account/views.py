@@ -14,16 +14,38 @@ class Register(CreateAPIView):
      
 class CustomObtainAuthToken(ObtainAuthToken):
     serializer_class = CustomAuthTokenSerializer
-    def post(self, request, *args, **kwargs):
-        serializer = self.serializer_class(data=request.data , context={'request':request})
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
-        token , created = Token.objects.get_or_create(user=user)
-        user_data = {'id':user.id,  'role':user.role , 'username':user.username ,
-                    'phone':user.Profile.phone , 'first_name':user.Profile.first_name, 
-                    'last_name':user.Profile.last_name , 'avatar':user.Profile.avatar  if user.Profile.avatar else None}
 
-        return Response({'token':token.key , 'user':user_data})
+    def post(self, request, *args, **kwargs):
+
+        serializer = self.serializer_class(
+            data=request.data,
+            context={'request': request}
+        )
+        serializer.is_valid(raise_exception=True)
+
+        user = serializer.validated_data['user']
+        token, created = Token.objects.get_or_create(user=user)
+
+        profile = getattr(user, "Profile", None)
+
+        avatar_url = None
+        if profile and profile.avatar:
+            avatar_url = request.build_absolute_uri(profile.avatar.url)
+
+        user_data = {
+            'id': user.id,
+            'role': user.role,
+            'username': user.username,
+            'phone': profile.phone if profile else None,
+            'first_name': profile.first_name if profile else None,
+            'last_name': profile.last_name if profile else None,
+            'avatar': avatar_url
+        }
+
+        return Response({
+            'token': token.key,
+            'user': user_data
+        })
     
 class UpdateProfileView(UpdateAPIView):
     serializer_class = ProfileSerializer

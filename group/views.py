@@ -22,15 +22,15 @@ class GroupViewSet(viewsets.ModelViewSet):
         with transaction.atomic():
 
             serializer = GroupSerializer(data=request.data)
-                
             serializer.is_valid(raise_exception=True)
-            validated_data = serializer.validated_data
 
+            validated_data = serializer.validated_data
             members = validated_data.pop("members", [])
 
-            
-            group = Group.objects.create(created_by=request.user,**validated_data)
-            
+            group = Group.objects.create(
+                created_by=request.user,
+                **validated_data
+            )
 
             if members:
                 group.members.set(members)
@@ -39,10 +39,8 @@ class GroupViewSet(viewsets.ModelViewSet):
 
             for member in members:
                 if not subproject.members.filter(id=member.id).exists():
-                    subproject.members.add(member)    
+                    subproject.members.add(member)
 
-
-            
             title = f"{group.title}-چت"
 
             conversation = Conversation.objects.create(
@@ -52,30 +50,35 @@ class GroupViewSet(viewsets.ModelViewSet):
                 created_by=request.user
             )
 
-            admins = User.objects.filter(role = 'owner')
-            
-            for admin in admins :
+            admins = User.objects.filter(role='owner')
 
-                ConversationMember.objects.get_or_create(conversation=conversation,user=admin , is_admin=True)
-            
+            # ----------------------------
+            # owners (safe)
+            # ----------------------------
+            for admin in admins:
+                ConversationMember.objects.get_or_create(
+                    conversation=conversation,
+                    user=admin,
+                    defaults={"is_admin": True}
+                )
 
-
-            ConversationMember.objects.create(
+            # ----------------------------
+            # creator (safe)
+            # ----------------------------
+            ConversationMember.objects.get_or_create(
                 conversation=conversation,
                 user=request.user,
-                is_admin=True
+                defaults={"is_admin": True}
             )
 
-
-
-
+            # ----------------------------
+            # group members (safe)
+            # ----------------------------
             for member in group.members.all():
                 ConversationMember.objects.get_or_create(
                     conversation=conversation,
-                    user=member
+                    user=member,
+                    defaults={"is_admin": False}
                 )
 
-
-        return Response(GroupSerializer(group).data)    
-
-
+        return Response(GroupSerializer(group).data)

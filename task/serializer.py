@@ -28,7 +28,7 @@ class TaskSerializer(serializers.ModelSerializer):
     
     files = TaskAttachmentSerializer(many=True,  read_only=True)
     checklist = CheckListSeializer(many=True ,  read_only=True)
-    routines = TaskRountineSerializer( read_only=True)
+    routines = TaskRountineSerializer(read_only=True)
     message_id = serializers.PrimaryKeyRelatedField(
         queryset=Message.objects.all(),
         write_only=True,
@@ -48,6 +48,9 @@ class TaskSerializer(serializers.ModelSerializer):
 
     name = serializers.SerializerMethodField()
 
+    avatar = serializers.SerializerMethodField()
+
+
 
 
     class Meta:
@@ -60,12 +63,13 @@ class TaskSerializer(serializers.ModelSerializer):
                   'created_by' , 'files', 'routines' ,'checklist' 
                   ,'assigned_to' ,'status' ,'start_time' 
                   ,'end_time' ,'quality_rate' ,'parent_id' 
-                  ,'root_task' ,'can_forward' ,'updated_at','created_at'
+                  ,'root_task' ,'can_forward','avatar'
+                  ,'updated_at','created_at'
 
                 ]
         read_only_fields = [
                             'id','projectname' ,'group_detail',
-                            'conversations_id' ,'name' ,'created_at' 
+                            'conversations_id' ,'name' ,'created_at' ,'avatar'
                             ,'parent_id' ,'root_task' , 'updated_at'
                             ]
 
@@ -78,6 +82,19 @@ class TaskSerializer(serializers.ModelSerializer):
     
     def get_conversations_id(self, instance):
         return instance.chat_room.id
+    
+    def get_avatar(self, instance):
+        profile = getattr(instance.assigned_to, "Profile", None)
+
+        if not profile or not profile.avatar:
+            return None
+
+        request = self.context.get("request")
+
+        if request:
+            return request.build_absolute_uri(profile.avatar.url)
+
+        return profile.avatar.url
 
 
 class StatusSerializer(serializers.ModelSerializer):

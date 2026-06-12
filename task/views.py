@@ -18,6 +18,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import status as s 
 from chat.serializer import MessageSerializer
 import json
+from datetime import datetime
 
 
 
@@ -41,58 +42,91 @@ class TaskView(ModelViewSet):
             user = request.user
             data['created_by'] = user
 
-
-            is_routine = data.get("is_routine" , False)
+            # ----------------------------
+            # files (FormData only)
+            # ----------------------------
             files_data = request.FILES.getlist('files')
 
+            # ----------------------------
+            # checklist (JSON or FormData string)
+            # ----------------------------
             raw_checklist = request.data.get("checklist")
 
-            if raw_checklist is None:
+            if not raw_checklist:
                 checklist_data = []
             elif isinstance(raw_checklist, (str, bytes, bytearray)):
                 checklist_data = json.loads(raw_checklist)
             else:
                 checklist_data = raw_checklist
-            routines = None
-            routines_response = None 
-            if is_routine:
-                routines = data.pop("routines" , [])
 
+            # ----------------------------
+            # routines (JSON or FormData string)
+            # ----------------------------
+            raw_routines = request.data.get("routines")
+
+            if not raw_routines:
+                routines = []
+            elif isinstance(raw_routines, (str, bytes, bytearray)):
+                routines = json.loads(raw_routines)
+            else:
+                routines = raw_routines
+
+            # ----------------------------
+            # message
+            # ----------------------------
             message_id = data.pop("message_id", None)
 
-
-
+            # ----------------------------
+            # create task
+            # ----------------------------
             task = Task.objects.create(**data)
 
+            # ----------------------------
+            # update message if exists
+            # ----------------------------
             if message_id:
-                message =  Message.objects.filter(id=message_id.id).first()
-                message.is_task = True
-                message.task = task
-                message.save()
+                message = Message.objects.filter(id=message_id.id).first()
+                if message:
+                    message.is_task = True
+                    message.task = task
+                    message.save()
 
+            title = f"{task.title}-چت"
 
-            title = f" {task.title}-چت"
+            # ----------------------------
+            # routines
+            # ----------------------------
+            routines_response = None
+            if routines:
+                routines_response = self.CreateRoutineTask(task, routines)
 
-            
-            if routines != None:
+            # ----------------------------
+            # files
+            # ----------------------------
+            files_response = self.CreateFile(task, files_data, user)
 
-                routines_response = self.CreateRoutineTask(task,routines)
+            # ----------------------------
+            # checklist
+            # ----------------------------
+            checklist_response = self.CreateCheklist(task, checklist_data)
 
-            files_response     =  self.CreateFile(task , files_data , user)
-            checklist_response =  self.CreateCheklist(task , checklist_data)
-        
-            conversation       = self.CreateChat(title ,task , user)
+            # ----------------------------
+            # chat
+            # ----------------------------
+            conversation = self.CreateChat(title, task, user)
 
-            print(request.FILES)
-            print(files_data)
-
-            print(checklist_data)
-            print(type(checklist_data))
-
-            response = {'task':TaskSerializer(task).data ,  'file':TaskAttachmentSerializer(files_response , many=True).data,  'checklist':CheckListSeializer(checklist_response , many=True).data  ,'routine':TaskRountineSerializer(routines_response).data}
+            # ----------------------------
+            # response
+            # ----------------------------
+            response = {
+                'task': TaskSerializer(task).data,
+                'file': TaskAttachmentSerializer(files_response, many=True).data,
+                'checklist': CheckListSeializer(checklist_response, many=True).data,
+                'routine': TaskRountineSerializer(routines_response).data if routines_response else None
+            }
 
             return Response(response)
-
+        
 
     def update(self, request, *args, **kwargs):
         with transaction.atomic():
@@ -136,7 +170,7 @@ class TaskView(ModelViewSet):
             # ROUTINE
             # -------------------------
             is_routine = data.get("is_routine", False)
-            routines = data.get("routines", None)
+            routines = request.data.get("routines")
 
             # پاک کردن قبلی‌ها
             TaskRoutine.objects.filter(task=task).delete()
@@ -162,18 +196,24 @@ class TaskView(ModelViewSet):
             return Response(response)
 
 
-    def CreateRoutineTask(self ,task ,data):
+    def parse_datetime(self,value):
+        if isinstance(value, str):
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return value
+
+    def CreateRoutineTask(self, task, data):
+
         period = data["period"]
-        start_date = data["start_date"]
+        start_date = self.parse_datetime(data["start_date"])
 
         if period == "daily":
             delta = timedelta(days=1)
         elif period == "weekly":
             delta = timedelta(weeks=1)
-        elif period == "monthly":
+        else:
             delta = timedelta(days=30)
 
-        routine =  TaskRoutine.objects.create(
+        routine = TaskRoutine.objects.create(
             task=task,
             period=period,
             start_date=start_date,
@@ -183,6 +223,7 @@ class TaskView(ModelViewSet):
         )
 
         return routine
+    
 
     def CreateFile(self ,task , files_data , user):
         response = []
@@ -233,7 +274,7 @@ class TaskView(ModelViewSet):
 
         return conversation
     
-    
+
     def CreateCheklist(self ,task, checklist_data):
         response = []
         for item in checklist_data:
@@ -387,29 +428,35 @@ class TaskDataView(APIView):
         return Response(data)
 
 class EmergencyTask(APIView):
+
     def get(self, request):
         now = timezone.now()
         two_days_later = now + timedelta(days=2)
 
         project_id = request.query_params.get("project_id")
 
-        # base query
         tasks = Task.objects.filter(
-            deadline__gte=now,
-            deadline__lte=two_days_later,
+            deadline__range=(now, two_days_later)
         ).exclude(status__id=3)
 
-        # optional filter
         if project_id:
             tasks = tasks.filter(
                 group__subproject__project_id=project_id
             )
 
-        # permission filter
         if request.user.role != "owner":
             tasks = tasks.filter(assigned_to=request.user)
 
-        serializer = TaskSerializer(tasks, many=True)
+        tasks = tasks.select_related(
+            "group",
+            "assigned_to",
+            "status"
+        ).prefetch_related(
+            "files",
+            "checklist"
+        )
+
+        serializer = TaskSerializer(tasks, many=True , context={"request": request})
         return Response(serializer.data)
 
 

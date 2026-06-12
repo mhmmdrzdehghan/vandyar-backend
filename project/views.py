@@ -23,13 +23,31 @@ class ProjectView(ModelViewSet):
 
 
 
-
-
 class SubProjetView(ModelViewSet):
     serializer_class = SubProjectSerializer
     permission_classes = [IsAuthenticated]
     queryset = SubProject.objects.all()
 
+    # ----------------------------
+    # helper: normalize input to queryset
+    # ----------------------------
+    def get_users_qs(self, value):
+        if not value:
+            return User.objects.none()
+
+        # already queryset
+        if hasattr(value, "filter"):
+            return value
+
+        # list of User objects
+        if isinstance(value[0], User):
+            value = [u.id for u in value]
+
+        return User.objects.filter(id__in=value)
+
+    # ----------------------------
+    # create subproject
+    # ----------------------------
     def create(self, request, *args, **kwargs):
 
         with transaction.atomic():
@@ -39,42 +57,54 @@ class SubProjetView(ModelViewSet):
 
             data = serializer.validated_data
 
-            members = data.pop("members", [])
-            managers = data.pop("managers", [])
+            # ----------------------------
+            # normalize inputs
+            # ----------------------------
+            members = self.get_users_qs(data.pop("members", []))
+            managers = self.get_users_qs(data.pop("managers", []))
             groups = data.pop("groups", [])
 
+            # ----------------------------
+            # create subproject
+            # ----------------------------
             sub = SubProject.objects.create(
                 created_by=request.user,
                 **data
             )
 
-            # add members and managers to subproject
             sub.members.set(members)
             sub.managers.set(managers)
 
             owners = User.objects.filter(role="owner")
 
-            # create groups and conversations
+            # ----------------------------
+            # create groups
+            # ----------------------------
             for group_data in groups:
 
+                group_members = self.get_users_qs(
+                    group_data.get("members", [])
+                )
+
                 group = Group.objects.create(
-                    title=group_data.get('title'),
-                    description=group_data.get('description'),
+                    title=group_data.get("title"),
+                    description=group_data.get("description"),
                     subproject=sub,
                     created_by=request.user
                 )
 
-                # add both managers and members
-
-                group_members = group_data.get('members', [])
-
-                group.members.add(*members)
+                # ----------------------------
+                # safe membership (NO duplicates)
+                # ----------------------------
+                group.members.set(members)
                 group.members.add(*managers)
-                group.members.add(group_members)
+                group.members.add(*group_members)
 
                 sub.members.add(*group_members)
 
-
+                # ----------------------------
+                # create conversation
+                # ----------------------------
                 conversation = Conversation.objects.create(
                     type="group",
                     title=f"{group.title}-چت",
@@ -82,38 +112,40 @@ class SubProjetView(ModelViewSet):
                     created_by=request.user
                 )
 
-                # managers -> admins
-                for manager in managers:
-                    ConversationMember.objects.get_or_create(
-                        conversation=conversation,
-                        user=manager,
-                        defaults={
-                            "is_admin": True
-                        }
-                    )
-
-                # group members
-                for member in group.members.all():
-                    ConversationMember.objects.get_or_create(
-                        conversation=conversation,
-                        user=member
-                    )
-
-                # owners
+                # ----------------------------
+                # owners (admin)
+                # ----------------------------
                 for owner in owners:
                     ConversationMember.objects.get_or_create(
                         conversation=conversation,
                         user=owner,
-                        defaults={
-                            "is_admin": True
-                        }
+                        defaults={"is_admin": True}
+                    )
+
+                # ----------------------------
+                # managers (admin)
+                # ----------------------------
+                for manager in managers:
+                    ConversationMember.objects.get_or_create(
+                        conversation=conversation,
+                        user=manager,
+                        defaults={"is_admin": True}
+                    )
+
+                # ----------------------------
+                # members (non-admin)
+                # ----------------------------
+                for member in group_members:
+                    ConversationMember.objects.get_or_create(
+                        conversation=conversation,
+                        user=member,
+                        defaults={"is_admin": False}
                     )
 
         return Response(
             self.get_serializer(sub).data,
             status=status.HTTP_201_CREATED
         )
-
 #data:
 class ProjectDataView(APIView):
 

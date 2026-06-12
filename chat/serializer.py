@@ -113,4 +113,8 @@ class ConversationSerializer(serializers.ModelSerializer):
 
 
     def get_projectid(self, instance):
-        return instance.group.subproject.project.id
+
+        if instance.group:
+            return instance.group.subproject.project.id
+        
+        return None
