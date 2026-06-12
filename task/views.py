@@ -19,7 +19,9 @@ from rest_framework import status as s
 from chat.serializer import MessageSerializer
 import json
 from datetime import datetime
-
+from notification.models import Notification
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 
 
@@ -115,6 +117,15 @@ class TaskView(ModelViewSet):
             # ----------------------------
             conversation = self.CreateChat(title, task, user)
 
+            #-----------------------------
+            # notification
+            #-----------------------------
+            assigned = data.get('assigned_to')
+            actor_name     = f" {user.Profile.first_name} {user.Profile.last_name}"
+            title = "!! تسک جدید دارید"
+            message = f"یک تسک توسط {actor_name} به شما اضافه شد"
+            self.CreateNotification(assigned , message ,title)
+
             # ----------------------------
             # response
             # ----------------------------
@@ -127,7 +138,6 @@ class TaskView(ModelViewSet):
 
             return Response(response)
         
-
     def update(self, request, *args, **kwargs):
         with transaction.atomic():
 
@@ -186,12 +196,23 @@ class TaskView(ModelViewSet):
             files_response = self.CreateFile(task, files_data, request.user)
             checklist_response = self.CreateCheklist(task, checklist_data)
 
+            #---------------------
+            # notification
+            #---------------------
+
+            #---------------------
+            # response
+            #---------------------
+
+
             response = {
                 'task': TaskSerializer(task).data,
                 'file': TaskAttachmentSerializer(files_response, many=True).data,
                 'checklist': CheckListSeializer(checklist_response, many=True).data,
                 'routine': TaskRountineSerializer(routines_response).data if routines_response else None
             }
+
+
 
             return Response(response)
 
@@ -274,7 +295,6 @@ class TaskView(ModelViewSet):
 
         return conversation
     
-
     def CreateCheklist(self ,task, checklist_data):
         response = []
         for item in checklist_data:
@@ -282,6 +302,30 @@ class TaskView(ModelViewSet):
             response.append(checklist)
 
         return response     
+
+    def CreateNotification(self, recipient, title, message):
+
+        notification = Notification.objects.create(
+            recipient=recipient,
+            title=title,
+            message=message
+        )
+
+        channel_layer = get_channel_layer()
+
+        async_to_sync(channel_layer.group_send)(
+            f"notification_{recipient.id}",
+            {
+                "type": "send_notification",
+                "id": notification.id,
+                "title": title,
+                "message": message,
+                "created_at": notification.created_at.isoformat(),
+            }
+        )
+
+        return notification
+        
 
 
 class StatusView(ModelViewSet):

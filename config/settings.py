@@ -55,7 +55,8 @@ INSTALLED_APPS = [
     'project',
     'chat',
     'group',
-    'channels'
+    'channels',
+    'notification'
 
 ]
 

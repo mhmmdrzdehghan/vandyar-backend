@@ -86,6 +86,7 @@ class MessageSerializer(serializers.ModelSerializer):
 
 class ConversationSerializer(serializers.ModelSerializer):
     projectid = serializers.SerializerMethodField(read_only=True)
+    admins     = serializers.SerializerMethodField()
 
     
     class Meta:
@@ -96,6 +97,7 @@ class ConversationSerializer(serializers.ModelSerializer):
             "title",
             "group",
             "task",
+            "admins",
             "created_by",
             "projectid",
             "members",
@@ -106,6 +108,7 @@ class ConversationSerializer(serializers.ModelSerializer):
         read_only_fields = [
             "id",
             "created_by",
+            "admins",
             "projectid",
             "created_at",
             "updated_at",
@@ -118,3 +121,12 @@ class ConversationSerializer(serializers.ModelSerializer):
             return instance.group.subproject.project.id
         
         return None
+    
+
+    def get_admins(self, instance):
+        return list(
+            ConversationMember.objects.filter(
+                conversation=instance,
+                is_admin=True
+            ).values_list("user_id", flat=True)
+        )
