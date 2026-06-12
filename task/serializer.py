@@ -50,7 +50,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Task
-        fields = ['id' ,'title' , 'name' ,'projectname','group_detail' ,'group' ,'description', 'message_id','is_routine'  ,'planned_start_at' ,'deadline' ,'priority' , 'created_by' , 'files', 'routines' ,'checklist' ,'assigned_to' ,'status' ,'start_time' ,'end_time' ,'quality_rate' ,'parent_id' ,'root_task' ,'can_forward' ,'updated_at','created_at']
+        fields = ['id' ,'title' , 'name','voice' ,'projectname','group_detail' ,'group' ,'description', 'message_id','is_routine'  ,'planned_start_at' ,'deadline' ,'priority' , 'created_by' , 'files', 'routines' ,'checklist' ,'assigned_to' ,'status' ,'start_time' ,'end_time' ,'quality_rate' ,'parent_id' ,'root_task' ,'can_forward' ,'updated_at','created_at']
         read_only_fields = ['id','projectname' ,'group_detail', 'name' ,'created_at' ,'parent_id' ,'root_task' , 'updated_at']
 
     def get_name(self, instance):

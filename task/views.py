@@ -17,7 +17,7 @@ from chat.models import Message , Conversation
 from django.shortcuts import get_object_or_404
 from rest_framework import status as s 
 from chat.serializer import MessageSerializer
-
+import json
 
 
 
@@ -43,10 +43,11 @@ class TaskView(ModelViewSet):
 
 
             is_routine = data.get("is_routine" , False)
-            files_data = data.pop('files' , [])
-            checklist_data = data.pop('checklist' , [])
+            files_data = request.FILES.getlist('files')
+            # voice = request.FILES.getlist('voice')
 
-
+            checklist_data = request.data.get("checklist", "[]")
+            checklist_data = json.loads(checklist_data)
 
             routines = None
             routines_response = None 
@@ -78,6 +79,11 @@ class TaskView(ModelViewSet):
         
             conversation       = self.CreateChat(title ,task , user)
 
+            print(request.FILES)
+            print(files_data)
+
+            print(checklist_data)
+            print(type(checklist_data))
 
             response = {'task':TaskSerializer(task).data ,  'file':TaskAttachmentSerializer(files_response , many=True).data,  'checklist':CheckListSeializer(checklist_response , many=True).data  ,'routine':TaskRountineSerializer(routines_response).data}
 
@@ -87,6 +93,7 @@ class TaskView(ModelViewSet):
         with transaction.atomic():
 
             task = Task.objects.get(id=kwargs.get('pk'))
+            # voice = request.FILES.getlist('voice')
 
             serializer = TaskSerializer(
                 instance=task,
@@ -95,14 +102,18 @@ class TaskView(ModelViewSet):
             )
             serializer.is_valid(raise_exception=True)
 
-            task = serializer.save()
+            # if voice:
+            #     serializer.save(voice=voice)
+            # else:
+            serializer.save()
+
 
             data = serializer.validated_data
 
             is_routine = data.get("is_routine", False)
-            files_data = data.get('files', [])
-            checklist_data = data.get('checklist', [])
-
+            files_data = request.FILES.getlist('files')
+            checklist_data = request.data.get("checklist", "[]")
+            checklist_data = json.loads(checklist_data)
             routines = None
             routines_response = None
 

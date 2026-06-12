@@ -100,6 +100,12 @@ class Task(models.Model):
         related_name="task_chain"
     )
 
+    voice = models.FileField(
+        upload_to="voice/",
+        null=True,
+        blank=True
+    )
+
     can_forward = models.BooleanField()
 
     created_by = models.ForeignKey(
