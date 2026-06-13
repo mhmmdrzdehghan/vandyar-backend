@@ -93,7 +93,7 @@ class TaskView(ModelViewSet):
                     message.task = task
                     message.save()
 
-            title = f"{task.title}-چت"
+            
 
             # ----------------------------
             # routines
@@ -115,16 +115,22 @@ class TaskView(ModelViewSet):
             # ----------------------------
             # chat
             # ----------------------------
-            conversation = self.CreateChat(title, task, user)
+
+            group = task.group
+            subproject = group.subproject
+            project = subproject.project
+
+            chat_title = f"{group.title}-{subproject.title}-{project.title}"
+            conversation = self.CreateChat(chat_title, task, user)
 
             #-----------------------------
             # notification
             #-----------------------------
             assigned = data.get('assigned_to')
             actor_name     = f" {user.Profile.first_name} {user.Profile.last_name}"
-            title = "!! تسک جدید دارید"
+            title = "تسک جدید دارید"
             message = f"یک تسک توسط {actor_name} به شما اضافه شد"
-            self.CreateNotification(assigned , message ,title)
+            self.CreateNotification(assigned , title , message)
 
             # ----------------------------
             # response

@@ -98,10 +98,13 @@ class TaskSerializer(serializers.ModelSerializer):
 
 
 class StatusSerializer(serializers.ModelSerializer):
+    count = serializers.IntegerField(read_only=True)
+
     class Meta:
+
         model = Status
-        fields = ['id','title' , 'created_at' , 'updated_at']
-        read_only_fields = ['id','created_at' , 'updated_at']
+        fields = ['id','title','count' , 'created_at' , 'updated_at']
+        read_only_fields = ['id','count' ,'created_at' , 'updated_at']
 
 
 

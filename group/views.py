@@ -9,6 +9,11 @@ from chat.models import Conversation , ConversationMember
 from rest_framework.response import Response
 from django.db import transaction
 from account.models import User
+from notification.models import Notification
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+from rest_framework import status
+
 
 
 class GroupViewSet(viewsets.ModelViewSet):
@@ -36,12 +41,13 @@ class GroupViewSet(viewsets.ModelViewSet):
                 group.members.set(members)
 
             subproject = group.subproject
+            project = subproject.project
 
             for member in members:
                 if not subproject.members.filter(id=member.id).exists():
                     subproject.members.add(member)
 
-            title = f"{group.title}-چت"
+            title = f"{group.title}-{subproject.title}-{project.title}"
 
             conversation = Conversation.objects.create(
                 type="group",
@@ -50,7 +56,7 @@ class GroupViewSet(viewsets.ModelViewSet):
                 created_by=request.user
             )
 
-            admins = User.objects.filter(role='owner')
+            admins = User.objects.filter(role="owner")
 
             # ----------------------------
             # owners (safe)
@@ -60,6 +66,14 @@ class GroupViewSet(viewsets.ModelViewSet):
                     conversation=conversation,
                     user=admin,
                     defaults={"is_admin": True}
+                )
+
+
+                # NOTIFICATIONS
+                self.CreateNotification(
+                    admin,
+                    "گروه جدید ایجاد شد",
+                    f"گروه {group.title} در زیر پروژه {subproject.title} ایجاد شد"
                 )
 
             # ----------------------------
@@ -81,4 +95,41 @@ class GroupViewSet(viewsets.ModelViewSet):
                     defaults={"is_admin": False}
                 )
 
-        return Response(GroupSerializer(group).data)
+                # NOTIFICATIONS
+                self.CreateNotification(
+                    member,
+                    "شما به یک گروه اضافه شدید",
+                    f"شما به گروه {group.title} در زیر پروژه {subproject.title} اضافه شدید"
+                )
+
+
+        return Response(
+            GroupSerializer(group).data,
+            status=status.HTTP_201_CREATED
+        ) 
+
+
+
+    def CreateNotification(self, recipient, title, message):
+
+        notification = Notification.objects.create(
+            recipient=recipient,
+            title=title,
+            message=message
+        )
+
+        channel_layer = get_channel_layer()
+
+        async_to_sync(channel_layer.group_send)(
+            f"notification_{recipient.id}",
+            {
+                "type": "send_notification",
+                "id": notification.id,
+                "title": title,
+                "message": message,
+                "created_at": notification.created_at.isoformat(),
+            }
+        )
+
+        return notification
+         

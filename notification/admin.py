@@ -1,5 +1,4 @@
 from django.contrib import admin
-
 from .models import Notification
 
 
@@ -36,36 +35,33 @@ class NotificationAdmin(admin.ModelAdmin):
         "updated_at",
     )
 
-    ordering = (
-        "-created_at",
-    )
-
     autocomplete_fields = (
         "recipient",
         "actor",
     )
 
+    ordering = (
+        "-created_at",
+    )
+
+    list_per_page = 25
+
+    date_hierarchy = "created_at"
+
     fieldsets = (
         (
-            "Users",
+            "اطلاعات اصلی",
             {
                 "fields": (
                     "recipient",
                     "actor",
-                )
-            },
-        ),
-        (
-            "Notification",
-            {
-                "fields": (
                     "title",
                     "message",
                 )
             },
         ),
         (
-            "Reference Object",
+            "مرجع",
             {
                 "fields": (
                     "content_type",
@@ -74,7 +70,7 @@ class NotificationAdmin(admin.ModelAdmin):
             },
         ),
         (
-            "Dates",
+            "زمان‌ها",
             {
                 "fields": (
                     "created_at",

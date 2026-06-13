@@ -8,12 +8,16 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from group.models import Group
 from django.db import transaction
+from django.db.models import Count
 from chat.models import Conversation , ConversationMember
 from account.models import User
 from rest_framework import status
 from notification.models import Notification
+from task.models import Task
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from task.models import Status
+from task.serializer import StatusSerializer
 
 
 class ProjectView(ModelViewSet):
@@ -41,10 +45,6 @@ class ProjectView(ModelViewSet):
     
 
     def CreateNotification(self, recipient, title, message):
-
-        print(f"SENDING TO GROUP: notification_{recipient.id}")
-
-
 
         notification = Notification.objects.create(
             recipient=recipient,
@@ -144,21 +144,23 @@ class SubProjetView(ModelViewSet):
                     created_by=request.user
                 )
 
-                # ----------------------------
-                # safe membership (NO duplicates)
-                # ----------------------------
-                group.members.set(members)
-                group.members.add(*managers)
                 group.members.add(*group_members)
 
                 sub.members.add(*group_members)
 
+
                 # ----------------------------
                 # create conversation
                 # ----------------------------
+
+                subproject = group.subproject
+                project = subproject.project
+
+                title = f"{group.title}-{subproject.title}-{project.title}"
+ 
                 conversation = Conversation.objects.create(
                     type="group",
-                    title=f"{group.title}-چت",
+                    title=title,
                     group=group,
                     created_by=request.user
                 )
@@ -193,10 +195,72 @@ class SubProjetView(ModelViewSet):
                         defaults={"is_admin": False}
                     )
 
+                # ----------------------------
+                # notification for group members
+                # ----------------------------
+                for member in group_members:
+                    self.CreateNotification(
+                        member,
+                        "شما به یک گروه اضافه شدید",
+                        f"شما به گروه {group.title} در زیر پروژه {sub.title} اضافه شدید"
+                    )
+
+            # =====================================================
+            # SUBPROJECT NOTIFICATIONS
+            # =====================================================
+
+            # اطلاع به owner ها
+            for owner in owners:
+                self.CreateNotification(
+                    owner,
+                    "زیر پروژه جدید ایجاد شد",
+                    f"یک زیر پروژه با نام {sub.title} ایجاد شد"
+                )
+
+            # اطلاع به manager ها
+            for manager in set(managers):
+                self.CreateNotification(
+                    manager,
+                    "شما سرگروه یک زیر پروژه شدید",
+                    f"شما به عنوان سرگروه در زیر پروژه {sub.title} اضافه شدید"
+                )
+
+            # اطلاع به member ها
+            for member in set(members):
+                self.CreateNotification(
+                    member,
+                    "شما به یک زیر پروژه اضافه شدید",
+                    f"شما به زیر پروژه {sub.title} اضافه شدید"
+                )
+
         return Response(
             self.get_serializer(sub).data,
             status=status.HTTP_201_CREATED
         )
+
+    def CreateNotification(self, recipient, title, message):
+
+        notification = Notification.objects.create(
+            recipient=recipient,
+            title=title,
+            message=message
+        )
+
+        channel_layer = get_channel_layer()
+
+        async_to_sync(channel_layer.group_send)(
+            f"notification_{recipient.id}",
+            {
+                "type": "send_notification",
+                "id": notification.id,
+                "title": title,
+                "message": message,
+                "created_at": notification.created_at.isoformat(),
+            }
+        )
+
+        return notification
+         
 #data:
 class ProjectDataView(APIView):
 
@@ -219,8 +283,31 @@ class ProjectDataView(APIView):
         serializer = ProjectSerializer(projects, many=True)
         return Response(serializer.data)
 
+class SubProjectReport(APIView):
+    def get(self, request, *args, **kwargs):
+        subproject_id = kwargs.get('subproject_id')
+        sub          = SubProject.objects.filter(id=subproject_id).prefetch_related("groups").first()
+        groupCount   = sub.groups.count()
+        membercount  = sub.members.count() 
+        managercount  = sub.managers.count() 
 
-    
+        # task = Task.objects.filter(group__subproject__id=subproject_id).values('status__title' , 'status__id').annotate(count=Count("id"))
+        statuses = Status.objects.filter(
+            task_assignments__group__subproject_id=subproject_id
+        ).annotate(
+            count=Count("task_assignments")
+        )
+
+        response = {
+                    'groupCount':groupCount ,
+                    'membercount':membercount , 
+                    'managercount':managercount,
+                    'subproject':SubProjectSerializer(sub).data,
+                    "statusdata":StatusSerializer(statuses , many=True).data
+
+                    }
+
+        return Response(response)
 
 
 

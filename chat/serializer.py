@@ -87,6 +87,11 @@ class MessageSerializer(serializers.ModelSerializer):
 class ConversationSerializer(serializers.ModelSerializer):
     projectid = serializers.SerializerMethodField(read_only=True)
     admins     = serializers.SerializerMethodField()
+    subprojectname = serializers.SerializerMethodField()
+    projectname  = serializers.SerializerMethodField()
+    groupname  = serializers.SerializerMethodField()
+
+
 
     
     class Meta:
@@ -99,6 +104,9 @@ class ConversationSerializer(serializers.ModelSerializer):
             "task",
             "admins",
             "created_by",
+            "subprojectname",
+            "projectname",
+            "groupname",
             "projectid",
             "members",
             "created_at",
@@ -109,6 +117,9 @@ class ConversationSerializer(serializers.ModelSerializer):
             "id",
             "created_by",
             "admins",
+            "subprojectname",
+            "projectname",
+            "groupname",
             "projectid",
             "created_at",
             "updated_at",
@@ -121,6 +132,30 @@ class ConversationSerializer(serializers.ModelSerializer):
             return instance.group.subproject.project.id
         
         return None
+    
+
+    def get_subprojectname(self, instance):
+
+        if instance.group:
+            return instance.group.subproject.title
+        
+        return None
+    
+    def get_projectname(self, instance):
+
+        if instance.group:
+            return instance.group.subproject.project.title
+        
+        return None
+    
+
+    def get_groupname(self, instance):
+
+        if instance.group:
+            return instance.group.title
+        
+        return None
+    
     
 
     def get_admins(self, instance):
