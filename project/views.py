@@ -11,11 +11,62 @@ from django.db import transaction
 from chat.models import Conversation , ConversationMember
 from account.models import User
 from rest_framework import status
+from notification.models import Notification
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+
 
 class ProjectView(ModelViewSet):
     serializer_class = ProjectSerializer
     permission_classes = [IsAuthenticated]
     queryset = Project.objects.all()
+
+    def create(self, request, *args, **kwargs):
+        response =  super().create(request, *args, **kwargs)
+        owners   =  User.objects.filter(role = 'owner')
+        title_project = response.data['title']
+
+        message = f"یک پروژه با نام {title_project} ایجاد شد "
+
+        for owner in owners :
+            
+            self.CreateNotification(owner ,"پروژه ی جدید ایجاد شد !!" , message)
+
+        return response
+
+        
+
+
+
+    
+
+    def CreateNotification(self, recipient, title, message):
+
+        print(f"SENDING TO GROUP: notification_{recipient.id}")
+
+
+
+        notification = Notification.objects.create(
+            recipient=recipient,
+            title=title,
+            message=message
+        )
+
+        channel_layer = get_channel_layer()
+
+        async_to_sync(channel_layer.group_send)(
+            f"notification_{recipient.id}",
+            {
+                "type": "send_notification",
+                "id": notification.id,
+                "title": title,
+                "message": message,
+                "created_at": notification.created_at.isoformat(),
+            }
+        )
+
+        return notification
+        
 
 
     def perform_create(self, serializer):

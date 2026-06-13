@@ -327,7 +327,6 @@ class TaskView(ModelViewSet):
         return notification
         
 
-
 class StatusView(ModelViewSet):
     serializer_class = StatusSerializer
     permission_classes = [IsAuthenticated]

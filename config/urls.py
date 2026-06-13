@@ -33,7 +33,9 @@ urlpatterns = [
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("project/", include('project.urls')),
-    path("group/", include('group.urls'))
+    path("group/", include('group.urls')),
+    path("notification/", include('notification.urls')),
+
 
 ]
 if settings.DEBUG:

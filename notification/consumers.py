@@ -5,6 +5,8 @@ import json
 class NotificationConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
+        print("CONECTED VOTIFICATION ")
+
 
         user = self.scope["user"]
 
@@ -29,6 +31,9 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         )
 
     async def send_notification(self, event):
+
+        print("NOTIFICATION RECEIVED :", event)
+
 
         await self.send(
             text_data=json.dumps(
