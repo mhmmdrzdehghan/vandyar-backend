@@ -1,6 +1,6 @@
 from rest_framework.routers import DefaultRouter
 from django.urls import path , include
-from .views import ConversationData , TaskConversationListView , GroupConversationListView , ConversationMessagesAPIView
+from .views import ConversationData , TaskConversationListView , GroupConversationListView , ConversationMessagesAPIView , ConversationMemberView
 
 urlpatterns = [
     
@@ -12,8 +12,11 @@ urlpatterns = [
             ConversationMessagesAPIView.as_view(),
             name="conversation-messages"
         ),
-
-
+    path(
+        "conversation/<int:conversation_id>/members/",
+        ConversationMemberView.as_view(),
+        name="conversation-members"
+    ),    
 ]
 
 

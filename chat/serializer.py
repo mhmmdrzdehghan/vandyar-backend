@@ -90,9 +90,8 @@ class ConversationSerializer(serializers.ModelSerializer):
     subprojectname = serializers.SerializerMethodField()
     projectname  = serializers.SerializerMethodField()
     groupname  = serializers.SerializerMethodField()
-
-
-
+    profiles = serializers.SerializerMethodField()
+    
     
     class Meta:
         model = Conversation
@@ -105,6 +104,7 @@ class ConversationSerializer(serializers.ModelSerializer):
             "admins",
             "created_by",
             "subprojectname",
+            "profiles",
             "projectname",
             "groupname",
             "projectid",
@@ -125,6 +125,14 @@ class ConversationSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    def get_profiles(self,instance):
+
+        users =  User.objects.filter(conversations__conversation=instance)
+
+        return UserSerializer(
+            users,
+            many=True
+        ).data
 
     def get_projectid(self, instance):
 
@@ -165,3 +173,10 @@ class ConversationSerializer(serializers.ModelSerializer):
                 is_admin=True
             ).values_list("user_id", flat=True)
         )
+
+
+class UpdateConversationSerializer(serializers.Serializer):
+    users = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=True
+    )

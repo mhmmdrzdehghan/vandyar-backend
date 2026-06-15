@@ -611,7 +611,7 @@ class TaskGroupDefined(APIView):
 
         tasks = (
             Task.objects
-            .filter(group__chat_room__id=chat_id)
+            .filter(group__chat_room__id=chat_id , assigned_to=request.user)
             .select_related("status", "assigned_to")
         )
 

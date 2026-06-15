@@ -1,12 +1,19 @@
 from django.shortcuts import render
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.generics import ListAPIView
-from .serializer import MessageSerializer
+from rest_framework.generics import ListAPIView , UpdateAPIView
+from .serializer import MessageSerializer , UpdateConversationSerializer
 from rest_framework.permissions import IsAuthenticated
-from .models import Message , Conversation
+from .models import Message , Conversation , ConversationMember
 from .serializer import ConversationSerializer
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.db import transaction
+from account.models import User
+from group.models import Group
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+
+
 # Create your views here.
 
 
@@ -70,6 +77,124 @@ class ConversationMessagesAPIView(APIView):
         return Response(serializer.data)
 
 
+class DirectConversationView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request):
+
+        user2_id = request.data.get("user_id")
+
+        user1 = request.user
+        user2 = User.objects.get(id=user2_id)
+
+        conversation = (
+            Conversation.objects
+            .filter(type="direct")
+            .filter(members__user=user1)
+            .filter(members__user=user2)
+            .distinct()
+            .first()
+        )
+
+        if conversation:
+            return Response({
+                "conversation_id": conversation.id
+            })
+
+        conversation = Conversation.objects.create(
+            type="direct",
+            created_by=user1
+        )
+
+        ConversationMember.objects.bulk_create([
+            ConversationMember(
+                conversation=conversation,
+                user=user1
+            ),
+            ConversationMember(
+                conversation=conversation,
+                user=user2
+            )
+        ])
+
+        return Response({
+            "conversation_id": conversation.id
+        })
+
+
+class ConversationMemberView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @transaction.atomic
+    def post(self, request, conversation_id):
+        """
+        Add member
+        """
+        serializer = UpdateConversationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        users = serializer.validated_data['users']
+
+        group_users = Group.objects.filter(
+            chat_room__id=conversation_id
+        ).values_list("members", flat=True)
+
+        group_users = set(group_users)
+        users = set(users)
+
+        users_to_add = users - group_users
+
+        group = get_object_or_404(
+            Group,
+            chat_room__id=conversation_id
+        )
+
+        group.members.add(*users_to_add)
+
+
+        conversation = get_object_or_404(
+            Conversation,
+            id=conversation_id
+        )
+
+
+        for user_id in users_to_add:
+            ConversationMember.objects.get_or_create(
+                conversation=conversation,
+                user_id=user_id,
+            )
+
+    
+        return Response(
+            {"detail": "کاربر با موفقیت اضافه شد"},
+            status=status.HTTP_201_CREATED
+        )
+
+    @transaction.atomic
+    def delete(self, request, conversation_id):
+        """
+        Remove member
+        """
+
+        serializer = UpdateConversationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        users = serializer.validated_data['users']
+
+        for user in users:
+
+
+            deleted, _ = ConversationMember.objects.filter(
+                conversation_id=conversation_id,
+                user_id=user
+            ).delete()
+
+
+        return Response(
+            {"detail": "کاربر با موفقیت حذف شد"},
+            status=status.HTTP_200_OK
+        )
 
 
 class ConversationData(APIView):
