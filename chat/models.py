@@ -61,6 +61,14 @@ class Message(models.Model):
 
     content = models.TextField()
 
+    reply_to = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="replies"
+    )
+
     is_edited = models.BooleanField(default=False)
     edited_at = models.DateTimeField(null=True, blank=True)
 

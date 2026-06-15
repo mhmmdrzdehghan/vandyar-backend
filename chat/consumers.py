@@ -54,10 +54,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
 
         content = data.get("message")
+        reply_to = data.get("reply_to")
+
         if not content:
             return
 
-        message = await self.save_message(user, content)
+        message = await self.save_message(user, content, reply_to)
 
         await self.channel_layer.group_send(
             self.room_group_name,
@@ -66,12 +68,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 "event": "message",
                 "message_id": message["id"],
                 "message": message["content"],
+                "reply_to": message["reply_to"],
                 "user_id": user.id,
                 "is_task": message["is_task"],
                 "task_id": message["task_id"],
             }
         )
-
     # -----------------------------
     # REACTION
     # -----------------------------
@@ -180,22 +182,46 @@ class ChatConsumer(AsyncWebsocketConsumer):
     # DB OPERATIONS
     # -----------------------------
     @database_sync_to_async
-    def save_message(self, user, content):
+    def save_message(self, user, content, reply_to=None):
 
         conversation = Conversation.objects.get(id=self.conversation_id)
 
+        reply_message = None
+        if reply_to:
+            reply_message = Message.objects.filter(id=reply_to).first()
+
+        # 1. پیام اصلی
         message = Message.objects.create(
             conversation=conversation,
             sender=user,
             content=content,
-            is_task=False
+            is_task=False,
+            reply_to=reply_message
         )
+
+        # 2. اگر reply روی task بود → پیام در task chat هم ساخته شود
+        if reply_message and reply_message.is_task and reply_message.task:
+
+            task_conversation = Conversation.objects.filter(
+                task=reply_message.task
+            ).first()
+
+            if task_conversation:
+
+                Message.objects.create(
+                    conversation=task_conversation,
+                    sender=user,
+                    content=f"[Reply] {content}",
+                    is_task=False,
+                    reply_to=reply_message
+                )
 
         return {
             "id": message.id,
             "content": message.content,
             "is_task": message.is_task,
             "task_id": message.task_id,
+            "reply_to": message.reply_to.id if message.reply_to else None
         }
 
     # -----------------------------
