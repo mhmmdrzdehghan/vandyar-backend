@@ -1,6 +1,6 @@
 from rest_framework.routers import DefaultRouter
 from django.urls import path , include
-from .views import ConversationData , TaskConversationListView , GroupConversationListView , ConversationMessagesAPIView , ConversationMemberView
+from .views import ConversationData , TaskConversationListView , GroupConversationListView , ConversationMessagesAPIView , ConversationMemberView , DirectConversationView
 
 urlpatterns = [
     
@@ -17,6 +17,11 @@ urlpatterns = [
         ConversationMemberView.as_view(),
         name="conversation-members"
     ),    
+    path(
+        "conversation/direct/",
+        DirectConversationView.as_view(),
+        name="direct-conversation"
+    ),
 ]
 
 

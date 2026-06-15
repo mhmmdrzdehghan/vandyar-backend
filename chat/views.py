@@ -88,6 +88,8 @@ class DirectConversationView(APIView):
         user1 = request.user
         user2 = User.objects.get(id=user2_id)
 
+        title = f"{user1.Profile.first_name}-{user2.Profile.first_name}"
+
         conversation = (
             Conversation.objects
             .filter(type="direct")
@@ -104,7 +106,8 @@ class DirectConversationView(APIView):
 
         conversation = Conversation.objects.create(
             type="direct",
-            created_by=user1
+            created_by=user1,
+            title=title
         )
 
         ConversationMember.objects.bulk_create([
