@@ -4,7 +4,7 @@ from django.shortcuts import render
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from .models import Group
-from .serializer import GroupSerializer
+from .serializer import GroupSerializer , GroupUpdateSerializer
 from chat.models import Conversation , ConversationMember
 from rest_framework.response import Response
 from django.db import transaction
@@ -13,6 +13,7 @@ from notification.models import Notification
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from rest_framework import status
+from rest_framework.exceptions import ValidationError , NotFound
 
 
 
@@ -107,6 +108,92 @@ class GroupViewSet(viewsets.ModelViewSet):
             GroupSerializer(group).data,
             status=status.HTTP_201_CREATED
         ) 
+    
+
+    def update(self, request, *args, **kwargs):
+
+        groupid = kwargs.get("pk")
+
+        if not groupid:
+            raise ValidationError("something went wrong")
+
+        group = Group.objects.filter(id=groupid).first()
+
+        if not group:
+            raise NotFound("group not found")
+
+        serializer = GroupUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        # -----------------------------
+        # old members snapshot
+        # -----------------------------
+        old_members = set(group.members.all())
+
+        # -----------------------------
+        # update simple fields
+        # -----------------------------
+        members_data = data.pop("members", None)
+
+        for key, value in data.items():
+            setattr(group, key, value)
+
+        group.save()
+
+        # -----------------------------
+        # update m2m
+        # -----------------------------
+        if members_data is not None:
+            group.members.set(members_data)
+
+        new_members = set(group.members.all())
+
+        add_members = new_members - old_members
+        remove_members = old_members - new_members
+
+        conversation = Conversation.objects.filter(group=group).first()
+
+        title = "آپدیت گروه"
+
+        # -----------------------------
+        # added members
+        # -----------------------------
+        for user in add_members:
+
+            ConversationMember.objects.get_or_create(
+                conversation=conversation,
+                user=user
+            )
+
+            self.CreateNotification(
+                user,
+                title,
+                f"شما به گروه {group.title} اضافه شدید"
+            )
+
+        # -----------------------------
+        # removed members
+        # -----------------------------
+        for user in remove_members:
+
+            ConversationMember.objects.filter(
+                conversation=conversation,
+                user=user
+            ).delete()
+
+            self.CreateNotification(
+                user,
+                title,
+                f"شما از گروه {group.title} حذف شدید"
+            )
+
+        return Response({
+            "message": "گروه با موفقیت ویرایش شد"
+        })
+
+
+
 
 
 

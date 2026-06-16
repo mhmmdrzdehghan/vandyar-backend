@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import IsAuthenticated
-from .serializer import ProjectSerializer , SubProjectSerializer
+from .serializer import ProjectSerializer , SubProjectSerializer , SubProjectUpdateSerializer
 from .models import Project , SubProject
 from rest_framework.generics import ListAPIView
 from rest_framework.views import APIView
@@ -18,6 +18,13 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from task.models import Status
 from task.serializer import StatusSerializer
+from collections import defaultdict
+from rest_framework.exceptions import (
+    ValidationError,
+    NotFound,
+    PermissionDenied,
+)
+
 
 
 class ProjectView(ModelViewSet):
@@ -237,6 +244,93 @@ class SubProjetView(ModelViewSet):
             self.get_serializer(sub).data,
             status=status.HTTP_201_CREATED
         )
+    
+
+    def update(self, request, *args, **kwargs):
+
+        subprojectid = kwargs.get("pk")
+
+        if subprojectid is None:
+            raise ValidationError("ایدی پروژه ارسال نشده است")
+
+        sub = SubProject.objects.filter(id= int(subprojectid)).first()
+
+        if not sub:
+            raise NotFound("پروژه پیدا نشد")
+
+        serializer = SubProjectUpdateSerializer(
+            data=request.data,
+            partial=True
+        )
+
+        serializer.is_valid(raise_exception=True)
+
+        old_users = (
+            set(sub.members.all())
+            |
+            set(sub.managers.all())
+        )
+
+        for key, value in serializer.validated_data.items():
+
+            if key in ["members", "managers"]:
+                continue
+
+            setattr(sub, key, value)
+
+        sub.save()
+
+        if "members" in serializer.validated_data:
+            sub.members.set(serializer.validated_data["members"])
+
+        if "managers" in serializer.validated_data:
+            sub.managers.set(serializer.validated_data["managers"])
+
+        new_users = (
+            set(sub.members.all())
+            |
+            set(sub.managers.all())
+        )
+
+        removed_users = old_users - new_users
+        added_users = new_users - old_users
+        unchanged_users = old_users & new_users
+
+
+
+        for user in removed_users:
+            Conversation.objects.filter()
+            message = f"شما از پروژه {sub.title} حذف شدید"
+
+            self.CreateNotification(
+                user,
+                "آپدیت پروژه",
+                message
+            )
+
+        for user in added_users:
+            message = f"شما به پروژه {sub.title} اضافه شدید"
+
+            self.CreateNotification(
+                user,
+                "آپدیت پروژه",
+                message
+            )
+
+        for user in unchanged_users:
+            message = f"پروژه {sub.title} بروزرسانی شد"
+
+            self.CreateNotification(
+                user,
+                "آپدیت پروژه",
+                message
+            )
+
+        return Response({
+            "message": "پروژه با موفقیت تغییر کرد"
+        })
+    
+
 
     def CreateNotification(self, recipient, title, message):
 
@@ -309,6 +403,63 @@ class SubProjectReport(APIView):
 
         return Response(response)
 
+
+
+
+class AllSubprojectReport(APIView):
+
+    def get(self, request, *args, **kwargs):
+
+        subprojects = (
+            SubProject.objects
+            .annotate(
+                group_count=Count("groups", distinct=True),
+                member_count=Count("members", distinct=True),
+                manager_count=Count("managers", distinct=True),
+            )
+            .prefetch_related(
+                "groups",
+                "members",
+                "managers",
+            )
+        )
+
+        statuses = (
+            Status.objects
+            .filter(
+                task_assignments__group__subproject__isnull=False
+            )
+            .values(
+                "task_assignments__group__subproject_id",
+                "id",
+                "title",
+            )
+            .annotate(
+                count=Count("task_assignments")
+            )
+        )
+
+        status_map = defaultdict(list)
+
+        for status in statuses:
+            subproject_id = status.pop(
+                "task_assignments__group__subproject_id"
+            )
+
+            status_map[subproject_id].append(status)
+
+        response = []
+
+        for subproject in subprojects:
+            response.append({
+                "groupCount": subproject.group_count,
+                "membercount": subproject.member_count,
+                "managercount": subproject.manager_count,
+                "subproject": SubProjectSerializer(subproject).data,
+                "statusdata": status_map.get(subproject.id, [])
+            })
+
+        return Response(response)
 
 
 

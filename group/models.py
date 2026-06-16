@@ -13,7 +13,6 @@ class Group(models.Model):
         blank=True
     )  
 
-
     created_by = models.ForeignKey(
         User,
         on_delete=models.CASCADE,

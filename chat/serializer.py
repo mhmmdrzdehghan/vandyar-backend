@@ -52,6 +52,11 @@ class MessageSerializer(serializers.ModelSerializer):
             "is_task",
             "task",
             "admins",
+            "is_edited",
+            "edited_at",
+            "is_deleted",
+            "reply_to",
+            "deleted_at",
             "reactions",
             "groupid",
             "content",
@@ -64,6 +69,10 @@ class MessageSerializer(serializers.ModelSerializer):
             "sender",
             "reactions",
             "admins",
+            "is_edited",
+            "edited_at",
+            "is_deleted",
+            "deleted_at",
             "task",
             "groupid",
             "created_at",
@@ -87,6 +96,7 @@ class MessageSerializer(serializers.ModelSerializer):
 class ConversationSerializer(serializers.ModelSerializer):
     projectid = serializers.SerializerMethodField(read_only=True)
     admins     = serializers.SerializerMethodField()
+    members     = serializers.SerializerMethodField()
     subprojectname = serializers.SerializerMethodField()
     projectname  = serializers.SerializerMethodField()
     groupname  = serializers.SerializerMethodField()
@@ -103,12 +113,12 @@ class ConversationSerializer(serializers.ModelSerializer):
             "task",
             "admins",
             "created_by",
+            "members",
             "subprojectname",
             "profiles",
             "projectname",
             "groupname",
             "projectid",
-            "members",
             "created_at",
             "updated_at",
         ]
@@ -118,6 +128,7 @@ class ConversationSerializer(serializers.ModelSerializer):
             "created_by",
             "admins",
             "subprojectname",
+            "members",
             "projectname",
             "groupname",
             "projectid",
@@ -171,6 +182,14 @@ class ConversationSerializer(serializers.ModelSerializer):
             ConversationMember.objects.filter(
                 conversation=instance,
                 is_admin=True
+            ).values_list("user_id", flat=True)
+        )
+    
+    def get_members(self, instance):
+        return list(
+            ConversationMember.objects.filter(
+                conversation=instance,
+                is_admin=False
             ).values_list("user_id", flat=True)
         )
 

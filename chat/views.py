@@ -11,6 +11,8 @@ from django.db import transaction
 from account.models import User
 from group.models import Group
 from rest_framework import status
+from django.db.models import Q
+
 from django.shortcuts import get_object_or_404
 
 
@@ -206,11 +208,16 @@ class ConversationData(APIView):
     def get(self, request):
 
         conversations = (
-            Conversation.objects
-            .filter(members__user=request.user ,group__isnull=False)
-            .select_related("created_by", "group", "task")
-            .distinct()
+        Conversation.objects
+        .filter(
+            members__user=request.user
         )
+        .filter(
+            Q(group__isnull=False) |
+            Q(type="direct")
+        )
+        .distinct()
+    )
 
         serializer = ConversationSerializer(
             conversations,

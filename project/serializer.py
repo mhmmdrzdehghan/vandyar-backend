@@ -9,15 +9,24 @@ from account.models import User
 class GroupCreateSerializer(serializers.ModelSerializer):
 
     members_Profile = UserSerializer( source="members",many=True,read_only=True)
+    conversationid = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Group
         fields = [
+            "id",
             "title",
             "description",
+            "conversationid",
             "members",
             "members_Profile"
         ]
+
+        read_only_fields =["id" , "conversationid"]
+
+    def get_conversationid(self, instance):
+        return instance.chat_room.id
+
 
 class SubProjectSerializer(serializers.ModelSerializer):
     groups  = GroupCreateSerializer(many=True ,required=False)
@@ -45,6 +54,7 @@ class SubProjectSerializer(serializers.ModelSerializer):
             "managers_profiles",
             "members_profiles",
             "managers",
+            "avatar",
             "groups",
             "members",
             "created_by",
@@ -60,6 +70,21 @@ class SubProjectSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
+
+class SubProjectUpdateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = SubProject
+        fields = [
+            "title",
+            "description",
+            "managers",
+            "members",
+        ]
+
+
+
+
 class ProjectSerializer(serializers.ModelSerializer):
     subprojects = SubProjectSerializer(many=True, read_only=True)
     class Meta:
@@ -67,6 +92,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "title",
+            "avatar",
             "subprojects",
             "description",
             "created_by",

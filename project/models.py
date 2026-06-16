@@ -5,7 +5,7 @@ from account.models import User
 class Project(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
-
+    avatar = models.ImageField(upload_to="avatars/project", null=True, blank=True)
     created_by = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -30,6 +30,9 @@ class SubProject(models.Model):
 
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
+
+    avatar = models.ImageField(upload_to="avatars/subproject", null=True, blank=True)
+
 
     managers = models.ManyToManyField(
         User,
