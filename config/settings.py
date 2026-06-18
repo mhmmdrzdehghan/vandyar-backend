@@ -57,7 +57,8 @@ INSTALLED_APPS = [
     'group',
     'channels',
     'notification',
-    'announcement'
+    'announcement',
+    'note'
 
 ]
 

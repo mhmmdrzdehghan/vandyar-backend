@@ -22,6 +22,7 @@ from datetime import datetime
 from notification.models import Notification
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from note.models import Note
 
 
 
@@ -77,6 +78,8 @@ class TaskView(ModelViewSet):
             # message
             # ----------------------------
             message_id = data.pop("message_id", None)
+            note_id = data.pop("note_id", None)
+
 
             # ----------------------------
             # create task
@@ -92,6 +95,21 @@ class TaskView(ModelViewSet):
                     message.is_task = True
                     message.task = task
                     message.save()
+
+
+            #-------------------------------
+            # note
+            #-------------------------------
+
+            if note_id:
+                note = Note.objects.filter(id=note_id).first()
+                if note:
+                    note.is_task = True
+                    note.task = task
+                    note.save()
+
+
+
 
             
 

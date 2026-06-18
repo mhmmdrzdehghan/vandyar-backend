@@ -2,7 +2,6 @@
 from django.contrib import admin
 from .models import Announcement
 
-
 @admin.register(Announcement)
 class AnnouncementAdmin(admin.ModelAdmin):
 
@@ -11,14 +10,16 @@ class AnnouncementAdmin(admin.ModelAdmin):
         "title",
         "is_active",
         "recipient_count",
-        "deadline",
+        "start_at",
+        "end_at",
         "created_at",
     )
 
     list_filter = (
         "is_active",
         "created_at",
-        "deadline",
+        "start_at",
+        "end_at",
     )
 
     search_fields = (
@@ -41,45 +42,5 @@ class AnnouncementAdmin(admin.ModelAdmin):
         "-created_at",
     )
 
-    fieldsets = (
-        (
-            "اطلاعیه",
-            {
-                "fields": (
-                    "title",
-                    "message",
-                )
-            },
-        ),
-        (
-            "گیرندگان",
-            {
-                "fields": (
-                    "recipients",
-                )
-            },
-        ),
-        (
-            "تنظیمات",
-            {
-                "fields": (
-                    "is_active",
-                    "deadline",
-                )
-            },
-        ),
-        (
-            "اطلاعات سیستمی",
-            {
-                "fields": (
-                    "created_at",
-                    "updated_at",
-                )
-            },
-        ),
-    )
-
     def recipient_count(self, obj):
         return obj.recipients.count()
-
-    recipient_count.short_description = "Recipients"

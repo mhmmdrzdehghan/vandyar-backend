@@ -3,6 +3,7 @@ from .models import Task , Status , TaskAttachment , CheckList , TaskRoutine
 from django.db import transaction
 from chat.models import Message
 from group.serializer import GroupSerializer
+from note.models import Note
 
 class TaskAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -35,6 +36,12 @@ class TaskSerializer(serializers.ModelSerializer):
         required=False
     )
 
+    note_id = serializers.PrimaryKeyRelatedField(
+        queryset=Note.objects.all(),
+        write_only=True,
+        required=False
+    )
+
     conversations_id = serializers.SerializerMethodField()
 
     group_detail = GroupSerializer(
@@ -58,7 +65,7 @@ class TaskSerializer(serializers.ModelSerializer):
         fields = [
                   'id' ,'title' , 'name','voice' ,'projectname' ,
                   'conversations_id','group_detail' ,'group' ,
-                  'description', 'message_id','is_routine'  ,
+                  'description', 'message_id','note_id','is_routine'  ,
                   'planned_start_at' ,'deadline' ,'priority' , 
                   'created_by' , 'files', 'routines' ,'checklist' 
                   ,'assigned_to' ,'status' ,'start_time' 
