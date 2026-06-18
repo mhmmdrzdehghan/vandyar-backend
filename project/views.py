@@ -32,20 +32,100 @@ class ProjectView(ModelViewSet):
     permission_classes = [IsAuthenticated]
     queryset = Project.objects.all()
 
+
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
-        response =  super().create(request, *args, **kwargs)
-        owners   =  User.objects.filter(role = 'owner')
-        title_project = response.data['title']
 
-        message = f"یک پروژه با نام {title_project} ایجاد شد "
+        serializer = ProjectSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-        for owner in owners :
-            
-            self.CreateNotification(owner ,"پروژه ی جدید ایجاد شد !!" , message)
+        data = serializer.validated_data
+        current_user = request.user
 
-        return response
+        # ---------------------------------
+        # project
+        # ---------------------------------
 
-        
+        project = Project.objects.create(
+            **data,
+            created_by=current_user
+        )
+
+        # ---------------------------------
+        # users
+        # ---------------------------------
+
+        owners = User.objects.filter(role="owner")
+        users = User.objects.filter(role="user")
+
+        all_members = User.objects.filter(
+            role__in=["owner", "user"]
+        ).distinct()
+
+        # ---------------------------------
+        # subproject
+        # ---------------------------------
+
+        sub = SubProject.objects.create(
+            project=project,
+            title="عمومی",
+            created_by=current_user
+        )
+
+        sub.members.set(all_members)
+
+        # ---------------------------------
+        # group
+        # ---------------------------------
+
+        group = Group.objects.create(
+            subproject=sub,
+            title="عمومی",
+            created_by=current_user
+        )
+
+        group.members.set(all_members)
+
+        # ---------------------------------
+        # chat
+        # ---------------------------------
+
+        chat = Conversation.objects.create(
+            type="group",
+            title="عمومی",
+            group=group,
+            created_by=current_user
+        )
+
+        for member in all_members:
+
+            ConversationMember.objects.get_or_create(
+                conversation=chat,
+                user=member,
+                defaults={
+                    "is_admin": member.role == "owner"
+                }
+            )
+
+        # ---------------------------------
+        # notification
+        # ---------------------------------
+
+        title_project = project.title
+
+        for owner in owners:
+
+            message = f"یک پروژه با نام {title_project} ایجاد شد"
+
+            self.CreateNotification(
+                owner,
+                "پروژه جدید ایجاد شد",
+                message
+            )
+
+        return Response(
+            ProjectSerializer(project).data
+        )
 
 
 
@@ -403,9 +483,6 @@ class SubProjectReport(APIView):
 
         return Response(response)
 
-
-
-
 class AllSubprojectReport(APIView):
 
     def get(self, request, *args, **kwargs):
@@ -461,7 +538,44 @@ class AllSubprojectReport(APIView):
 
         return Response(response)
 
+class CheckBoxSubProject(APIView):
+    def get(self, request, *args, **kwargs):
+        projects = Project.objects.prefetch_related(
+            "subprojects__groups__tasks"
+        )
 
+        result = []
+
+        for project in projects:
+
+            project_data = {
+                "id": project.id,
+                "project": project.title,
+                "subprojects": []
+            }
+
+            for sub in project.subprojects.all():
+
+                subproject_data = {
+                    "id": sub.id,
+                    "subproject": sub.title,
+                    "items": []
+                }
+
+                for group in sub.groups.all():
+                    for task in group.tasks.all():
+
+                        subproject_data["items"].append({
+                            "id": task.id,
+                            "text": task.title,
+                            "staatus": task.status.title,  
+                            "status_id": task.status.id,  
+                        })
+
+                project_data["subprojects"].append(subproject_data)
+
+            result.append(project_data)
+
+        return Response(result)     
 
         
-

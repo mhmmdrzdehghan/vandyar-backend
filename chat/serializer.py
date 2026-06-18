@@ -94,13 +94,15 @@ class MessageSerializer(serializers.ModelSerializer):
 
 
 class ConversationSerializer(serializers.ModelSerializer):
-    projectid = serializers.SerializerMethodField(read_only=True)
-    admins     = serializers.SerializerMethodField()
-    members     = serializers.SerializerMethodField()
+    projectid      = serializers.SerializerMethodField(read_only=True)
+    admins         = serializers.SerializerMethodField()
+    members        = serializers.SerializerMethodField()
     subprojectname = serializers.SerializerMethodField()
-    projectname  = serializers.SerializerMethodField()
-    groupname  = serializers.SerializerMethodField()
-    profiles = serializers.SerializerMethodField()
+    projectname    = serializers.SerializerMethodField()
+    groupname      = serializers.SerializerMethodField()
+    profiles       = serializers.SerializerMethodField()
+    chattitle     = serializers.SerializerMethodField()
+ 
     
     
     class Meta:
@@ -116,6 +118,7 @@ class ConversationSerializer(serializers.ModelSerializer):
             "members",
             "subprojectname",
             "profiles",
+            "chattitle",
             "projectname",
             "groupname",
             "projectid",
@@ -178,12 +181,17 @@ class ConversationSerializer(serializers.ModelSerializer):
     
 
     def get_admins(self, instance):
-        return list(
-            ConversationMember.objects.filter(
-                conversation=instance,
-                is_admin=True
-            ).values_list("user_id", flat=True)
-        )
+        if instance.type == "group" :
+            return list(
+                ConversationMember.objects.filter(
+                    conversation=instance,
+                    is_admin=True
+                ).values_list("user_id", flat=True)
+            )
+        
+        return ConversationMember.objects.filter(
+                    conversation=instance
+                ).values_list("user_id", flat=True)
     
     def get_members(self, instance):
         return list(
@@ -192,6 +200,24 @@ class ConversationSerializer(serializers.ModelSerializer):
                 is_admin=False
             ).values_list("user_id", flat=True)
         )
+    
+
+
+    def get_chattitle(self, obj):
+
+        request = self.context.get("request")
+        user = request.user
+
+        if obj.type == "group":
+            return obj.title
+
+        other_user = obj.members.exclude(user=user).first()
+
+        if other_user:
+            name =  f"{other_user.user.Profile.first_name} {other_user.user.Profile.last_name}"
+            return  name
+
+        return "Unknown"
 
 
 class UpdateConversationSerializer(serializers.Serializer):

@@ -157,8 +157,29 @@ class GroupViewSet(viewsets.ModelViewSet):
         title = "آپدیت گروه"
 
         # -----------------------------
-        # added members
+        # added members subproject
         # -----------------------------
+        subproject = group.subproject
+
+        for member in add_members:
+            if not subproject.members.filter(id=member.id).exists():
+                subproject.members.add(member)        
+
+
+        # -----------------------------
+        # added members subproject
+        # -----------------------------
+        for member in remove_members:
+            subproject.members.remove(user)
+
+
+
+        
+
+        # -----------------------------
+        # added members conversation
+        # -----------------------------
+
         for user in add_members:
 
             ConversationMember.objects.get_or_create(

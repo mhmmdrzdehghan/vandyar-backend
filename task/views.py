@@ -136,7 +136,7 @@ class TaskView(ModelViewSet):
             # response
             # ----------------------------
             response = {
-                'task': TaskSerializer(task).data,
+                'task': TaskSerializer(task , context={"request": request}).data,
                 'file': TaskAttachmentSerializer(files_response, many=True).data,
                 'checklist': CheckListSeializer(checklist_response, many=True).data,
                 'routine': TaskRountineSerializer(routines_response).data if routines_response else None
@@ -212,7 +212,7 @@ class TaskView(ModelViewSet):
 
 
             response = {
-                'task': TaskSerializer(task).data,
+                'task': TaskSerializer(task , context={"request": request}).data,
                 'file': TaskAttachmentSerializer(files_response, many=True).data,
                 'checklist': CheckListSeializer(checklist_response, many=True).data,
                 'routine': TaskRountineSerializer(routines_response).data if routines_response else None

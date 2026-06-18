@@ -8,6 +8,9 @@ from django.contrib.auth import authenticate
 from rest_framework import serializers
 from django.db import transaction
 from .models import User, Profile
+from django.db import transaction
+from django.contrib.auth import get_user_model
+from chat.models import Conversation, ConversationMember
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -73,6 +76,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def create(self, validated_data):
+
         phone = validated_data.pop("phone")
         first_name = validated_data.pop("first_name")
         last_name = validated_data.pop("last_name")
@@ -90,6 +94,29 @@ class UserSerializer(serializers.ModelSerializer):
             last_name=last_name,
             avatar=avatar,
         )
+
+        # ==========================
+        # create direct chats
+        # ==========================
+
+        other_users = User.objects.exclude(id=user.id)
+
+        for other_user in other_users:
+
+            conversation = Conversation.objects.create(
+                type="direct",
+                created_by=user
+            )
+
+            ConversationMember.objects.create(
+                conversation=conversation,
+                user=user
+            )
+
+            ConversationMember.objects.create(
+                conversation=conversation,
+                user=other_user
+            )
 
         return user
 

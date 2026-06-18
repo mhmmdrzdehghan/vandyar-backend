@@ -221,7 +221,9 @@ class ConversationData(APIView):
 
         serializer = ConversationSerializer(
             conversations,
-            many=True
+            many=True,
+            context={"request": request}
+
         )
 
         return Response(serializer.data)
