@@ -101,7 +101,8 @@ class ConversationSerializer(serializers.ModelSerializer):
     projectname    = serializers.SerializerMethodField()
     groupname      = serializers.SerializerMethodField()
     profiles       = serializers.SerializerMethodField()
-    chattitle     = serializers.SerializerMethodField()
+    chattitle      = serializers.SerializerMethodField()
+    avatarProfile = serializers.SerializerMethodField()
  
     
     
@@ -115,6 +116,7 @@ class ConversationSerializer(serializers.ModelSerializer):
             "task",
             "admins",
             "created_by",
+            "avatarProfile",
             "members",
             "subprojectname",
             "profiles",
@@ -132,6 +134,7 @@ class ConversationSerializer(serializers.ModelSerializer):
             "admins",
             "subprojectname",
             "members",
+            "avatarProfile",
             "projectname",
             "groupname",
             "projectid",
@@ -145,7 +148,8 @@ class ConversationSerializer(serializers.ModelSerializer):
 
         return UserSerializer(
             users,
-            many=True
+            many=True,
+            context=self.context
         ).data
 
     def get_projectid(self, instance):
@@ -192,6 +196,35 @@ class ConversationSerializer(serializers.ModelSerializer):
         return ConversationMember.objects.filter(
                     conversation=instance
                 ).values_list("user_id", flat=True)
+
+
+    def get_avatarProfile(self, instance):
+        if instance.type == "group":
+            return None
+
+        request = self.context.get("request")
+        if not request:
+            return None
+
+        current_user = request.user
+
+        conversation_member = (
+            instance.members
+            .exclude(user=current_user)
+            .select_related("user__Profile")
+            .first()
+        )
+
+        if not conversation_member:
+            return None
+
+        member = conversation_member.user
+        profile = getattr(member, "Profile", None)
+
+        if profile and profile.avatar:
+            return request.build_absolute_uri(profile.avatar.url)
+
+        return None
     
     def get_members(self, instance):
         return list(
