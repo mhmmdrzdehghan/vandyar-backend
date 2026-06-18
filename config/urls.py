@@ -35,8 +35,7 @@ urlpatterns = [
     path("project/", include('project.urls')),
     path("group/", include('group.urls')),
     path("notification/", include('notification.urls')),
-
-
+    path("announcement/", include('announcement.urls')),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
