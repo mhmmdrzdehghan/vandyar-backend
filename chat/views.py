@@ -74,7 +74,7 @@ class ConversationMessagesAPIView(APIView):
             "reactions__user"
         ).order_by("created_at")
 
-        serializer = MessageSerializer(messages, many=True)
+        serializer = MessageSerializer(messages, many=True ,context={"request": request})
 
         return Response(serializer.data)
 

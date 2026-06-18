@@ -10,13 +10,18 @@ class Announcement(models.Model):
         related_name="announcements",
         blank=True
     )
+
     is_active = models.BooleanField(default=True)
 
-    deadline = models.DateTimeField(null=True, blank=True)
+    start_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
+
+    end_at = models.DateTimeField(
+        null=True,
+        blank=True
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
-
-    def __str__(self):
-        return self.title
