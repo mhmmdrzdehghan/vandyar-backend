@@ -25,11 +25,13 @@ from rest_framework.exceptions import (
     PermissionDenied,
 )
 
+from .permission import IsProjectOwner , IsSubProjectManagerOrOwner
+
 
 
 class ProjectView(ModelViewSet):
     serializer_class = ProjectSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated , IsProjectOwner]
     queryset = Project.objects.all()
 
 
@@ -163,7 +165,7 @@ class ProjectView(ModelViewSet):
 
 class SubProjetView(ModelViewSet):
     serializer_class = SubProjectSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated , IsSubProjectManagerOrOwner]
     queryset = SubProject.objects.all()
 
     # ----------------------------

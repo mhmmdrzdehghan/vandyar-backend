@@ -16,20 +16,13 @@ class AnnouncementViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"])
     def my_announcements(self, request):
-        now = timezone.now()
 
         announcements = (
             Announcement.objects
             .filter(
-                Q(recipients=request.user) |
-                Q(recipients__isnull=True),
+                recipients=request.user ,
                 is_active=True,
             )
-            .filter(
-                Q(start_at__isnull=True) | Q(start_at__lte=now),
-                Q(end_at__isnull=True) | Q(end_at__gte=now),
-            )
-            .distinct()
             .prefetch_related("recipients")
         )
 

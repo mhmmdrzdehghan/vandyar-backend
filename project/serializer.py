@@ -56,6 +56,7 @@ class SubProjectSerializer(serializers.ModelSerializer):
             "managers",
             "avatar",
             "groups",
+            "status",
             "members",
             "created_by",
             "created_at",

@@ -88,7 +88,10 @@ class TaskSerializer(serializers.ModelSerializer):
         return instance.group.subproject.project.title
     
     def get_conversations_id(self, instance):
-        return instance.chat_room.id
+        if hasattr(instance, "chat_room"):
+            return instance.chat_room.id
+        return None
+
     
     def get_avatar(self, instance):
         profile = getattr(instance.assigned_to, "Profile", None)

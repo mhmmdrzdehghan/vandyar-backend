@@ -33,6 +33,12 @@ class SubProject(models.Model):
 
     avatar = models.ImageField(upload_to="avatars/subproject", null=True, blank=True)
 
+    status = models.ForeignKey(
+        'task.Status',
+        on_delete=models.PROTECT,
+        related_name="subprojects"
+    )
+
 
     managers = models.ManyToManyField(
         User,

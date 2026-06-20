@@ -14,12 +14,12 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from rest_framework import status
 from rest_framework.exceptions import ValidationError , NotFound
-
+from .permission import IsGroupCreatorAllowed
 
 
 class GroupViewSet(viewsets.ModelViewSet):
     serializer_class = GroupSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated ,IsGroupCreatorAllowed]
     queryset = Group.objects.all()
 
 

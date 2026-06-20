@@ -23,6 +23,7 @@ from notification.models import Notification
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from note.models import Note
+from .permission import IsTaskManagerOrOwner
 
 
 
@@ -30,7 +31,7 @@ from note.models import Note
 
 class TaskView(ModelViewSet):
     serializer_class  = TaskSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated , IsTaskManagerOrOwner]
 
     queryset = Task.objects.all()
 
@@ -529,92 +530,26 @@ class EmergencyTask(APIView):
 
 class TaskGroupPerson(APIView):
 
-    STATUSES = [
-        "شروع نشده",
-        "درحال انجام",
-        "انجام شده",
-        "کنسل شده",
-    ]
-
-    def empty_status_dict(self):
-        return {
-            status.title: []
-            for status in Status.objects.all()
-        }
-
-    def task_data(self, task):
-        return {
-            "id": task.id,
-            "title": task.title,
-            "assigned": {
-                "name": task.assigned_to.username,
-                "first_nme": task.assigned_to.Profile.first_name,
-                "last_name": task.assigned_to.Profile.last_name,
-                "avatar": (
-                    task.assigned_to.Profile.avatar.url
-                    if task.assigned_to.Profile.avatar
-                    else None
-                ),
-
-            } if task.assigned_to else None,
-            "priority": task.priority,
-            "date": task.deadline,
-        }
-
     def get(self, request, *args, **kwargs):
-
-        response = {}
-
-        # personal
-        personal = {
-            "title": "شخصی",
-            "tasks": self.empty_status_dict()
-        }
-
-        my_tasks = (
-            Task.objects
-            .select_related("status", "assigned_to")
-        )
-
-        for task in my_tasks:
-            personal["tasks"][task.status.title].append(
-                self.task_data(task)
-            )
-
-        response["personal"] = personal
-
-        # groups
-        groups = (
-            Group.objects
-            .filter(members=request.user)
-            .prefetch_related(
-                "tasks",
-                "tasks__status",
-                "tasks__assigned_to",
-                "subproject"
-            )
-        )
-
-        for group in groups:
-
-            group_data = {
-                "groupid":group.id,
-                "title": group.title,
-                "tasks": self.empty_status_dict(),
-                "subproject":group.subproject.title
-            }
-
-            for task in group.tasks.all():
-
-                group_data["tasks"][task.status.title].append(
-                    self.task_data(task)
-                )
-
-            response[group.title] = group_data
-            
-
-        return Response(response)     
+        status = Status.objects.values_list('title' ,flat=True)
+        user = request.user
     
+        response = []
+        for s in status:
+            task = Task.objects.filter(status__title=s , assigned_to=user)
+            taskdata = TaskSerializer(task , many=True , context={'request': request}).data
+            result = {}
+            result['status'] = s
+            result['task'] = taskdata
+            response.append(result)
+
+        return Response(response)    
+
+
+
+
+
+        
 
 
 class TaskGroupDefined(APIView):
