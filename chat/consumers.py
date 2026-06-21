@@ -125,6 +125,43 @@ class ChatConsumer(AsyncWebsocketConsumer):
             user_id=self.user.id
         ).update(last_read_message=last_message)
 
+
+    # -----------------------------
+    # DB: base url
+    # -----------------------------
+
+
+
+    def get_base_url(self,scope):
+        headers = dict(scope["headers"])
+        host = headers.get(b"host", b"").decode()
+        return f"http://{host}"
+
+
+
+    # -----------------------------
+    # DB: user payload
+    # -----------------------------
+
+    @database_sync_to_async
+    def get_user_payload(self , user):
+        profile = getattr(user, "Profile", None)
+
+        base_url = self.get_base_url(self.scope)
+
+
+        avatar = None
+        if profile and profile.avatar:
+            avatar = base_url + profile.avatar.url
+
+        return {
+            "id": user.id,
+            "username": user.Profile.first_name + ' ' +user.Profile.last_name,
+            "avatar":  avatar,
+        }
+
+
+
     # -----------------------------
     # MESSAGE
     # -----------------------------
@@ -136,12 +173,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
         content = data.get("message")
         reply_to = data.get("reply_to")
 
+        user_payload = await self.get_user_payload(user)
+
+
         if not content:
             return
 
         message = await self.save_message(user, content, reply_to)
 
-        # ارسال پیام به چت
         await self.channel_layer.group_send(
             self.room_group_name,
             {
@@ -150,9 +189,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 "message_id": message["id"],
                 "message": message["content"],
                 "reply_to": message["reply_to"],
-                "user_id": user.id,
+                "user": user_payload
             }
         )
+
 
         # گرفتن اعضای چت
         members = await self.get_conversation_members(self.conversation_id)

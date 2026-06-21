@@ -527,7 +527,6 @@ class EmergencyTask(APIView):
         serializer = TaskSerializer(tasks, many=True , context={"request": request})
         return Response(serializer.data)
 
-
 class TaskGroupPerson(APIView):
 
     def get(self, request, *args, **kwargs):
@@ -557,7 +556,6 @@ class TaskGroupPerson(APIView):
 
         return Response(response)    
 
-
 class TaskGroupPersonByUserid(APIView):
     def get(self, request, user_id):
         status = Status.objects.values_list('title' ,flat=True)
@@ -572,13 +570,6 @@ class TaskGroupPersonByUserid(APIView):
             response.append(result)
 
         return Response(response)    
-
-
-
-
-
-
-
 
 class TaskGroupDefined(APIView):
     def get(self, request, chat_id):
@@ -616,6 +607,25 @@ class TaskGroupDefined(APIView):
             })
 
         return Response(data)     
+
+#analysis
+class TaskPriortyAnalysis(APIView):
+    def get(self, request, user_id):
+        tasks = (Task.objects.filter(assigned_to=user_id)
+                 .values("priority")
+                 .annotate(count = Count("id"))
+                 )
+        
+        return Response(tasks)
+
+class TaskGRoupAnalysis(APIView):
+    def get(self, request, user_id):
+        data = (Group.objects.filter(members=user_id)
+                .values("id" , "title")
+                .annotate(count = Count('tasks'))                
+                )
+        
+        return Response(data)
 
 
 # Create your views here.

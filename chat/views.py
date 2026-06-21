@@ -11,7 +11,7 @@ from django.db import transaction
 from account.models import User
 from group.models import Group
 from rest_framework import status
-from django.db.models import Q
+from django.db.models import Q , Count , F
 from notification.models import Notification
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
@@ -162,12 +162,20 @@ class ConversationMemberView(APIView):
             id=conversation_id
         )
 
+        chattitle = Conversation.objects.filter(id=conversation_id).first().title
+
+
 
         for user_id in users_to_add:
             ConversationMember.objects.get_or_create(
                 conversation=conversation,
                 user_id=user_id,
             )
+
+            user = User.objects.filter(id=user_id).first()
+
+            self.CreateNotification(user , "دعوت به گروه!" , f"شما به گروه {chattitle} اضافه شدید")
+
 
     
         return Response(
@@ -227,30 +235,26 @@ class ConversationMemberView(APIView):
         )
 
         return notification
+
 class ConversationData(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
 
         conversations = (
-        Conversation.objects
-        .filter(
-            members__user=request.user
+            Conversation.objects
+            .filter(members__user=request.user)
+            .filter(
+                Q(group__isnull=False) |
+                Q(type="direct")
+            )
+            .distinct()
         )
-        .filter(
-            Q(group__isnull=False) |
-            Q(type="direct")
-        )
-        .distinct()
-    )
 
         serializer = ConversationSerializer(
             conversations,
             many=True,
             context={"request": request}
-
         )
 
         return Response(serializer.data)
-        
-    

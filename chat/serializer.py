@@ -102,7 +102,9 @@ class ConversationSerializer(serializers.ModelSerializer):
     groupname      = serializers.SerializerMethodField()
     profiles       = serializers.SerializerMethodField()
     chattitle      = serializers.SerializerMethodField()
-    avatarProfile = serializers.SerializerMethodField()
+    avatarProfile  = serializers.SerializerMethodField()
+    unread_count   = serializers.SerializerMethodField()
+
  
     
     
@@ -122,6 +124,7 @@ class ConversationSerializer(serializers.ModelSerializer):
             "profiles",
             "chattitle",
             "projectname",
+            "unread_count",
             "groupname",
             "projectid",
             "created_at",
@@ -137,10 +140,27 @@ class ConversationSerializer(serializers.ModelSerializer):
             "avatarProfile",
             "projectname",
             "groupname",
+            "unread_count",
             "projectid",
             "created_at",
             "updated_at",
         ]
+
+
+    def get_unread_count(self, obj):
+            user = self.context["request"].user
+
+            member = obj.members.filter(user=user).first()
+            if not member:
+                return 0
+
+            if member.last_read_message:
+                return obj.messages.filter(
+                    id__gt=member.last_read_message.id
+                ).exclude(sender=user).count()
+
+            return obj.messages.exclude(sender=user).count()
+
 
     def get_profiles(self,instance):
 
@@ -251,6 +271,21 @@ class ConversationSerializer(serializers.ModelSerializer):
             return  name
 
         return "Unknown"
+    
+
+    # def get_unread_count(self, obj):
+    #     user = self.context["request"].user
+
+    #     member = obj.members.filter(user=user).first()
+    #     if not member:
+    #         return 0
+
+    #     if member.last_read_message:
+    #         return obj.messages.filter(
+    #             id__gt=member.last_read_message.id
+    #         ).exclude(sender=user).count()
+
+    #     return obj.messages.exclude(sender=user).count()
 
 
 class UpdateConversationSerializer(serializers.Serializer):
