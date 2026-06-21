@@ -72,6 +72,15 @@ class SubProjectSerializer(serializers.ModelSerializer):
         ]
 
 
+    def get_fields(self):
+            fields = super().get_fields()
+            request = self.context.get("request")
+
+            if request and request.method == "POST":
+                fields.pop("status", None)
+
+            return fields
+
 class SubProjectUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:

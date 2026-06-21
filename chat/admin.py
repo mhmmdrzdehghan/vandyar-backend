@@ -39,11 +39,42 @@ class ConversationAdmin(admin.ModelAdmin):
 
 @admin.register(ConversationMember)
 class ConversationMemberAdmin(admin.ModelAdmin):
-    list_display = ["conversation", "user", "is_admin", "created_at"]
-    list_filter = ["is_admin"]
-    search_fields = ["user__username", "conversation__title"]
-    autocomplete_fields = ["conversation", "user"]
-    readonly_fields = ["created_at", "updated_at"]
+    list_display = (
+        "conversation",
+        "user",
+        "is_admin",
+        "last_read_message",
+        "created_at",
+    )
+
+    list_filter = (
+        "is_admin",
+        "conversation",
+    )
+
+    search_fields = (
+        "user__username",
+        "user__email",
+        "conversation__title",
+    )
+
+    autocomplete_fields = (
+        "conversation",
+        "user",
+        "last_read_message",
+    )
+
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+    )
+
+    list_select_related = (
+        "conversation",
+        "user",
+        "last_read_message",
+    )
+
 
 
 @admin.register(Message)

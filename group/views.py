@@ -105,7 +105,7 @@ class GroupViewSet(viewsets.ModelViewSet):
 
 
         return Response(
-            GroupSerializer(group).data,
+            GroupSerializer(group , context={'request': request}).data,
             status=status.HTTP_201_CREATED
         ) 
     

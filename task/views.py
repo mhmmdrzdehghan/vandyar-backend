@@ -532,11 +532,39 @@ class TaskGroupPerson(APIView):
 
     def get(self, request, *args, **kwargs):
         status = Status.objects.values_list('title' ,flat=True)
+        group = request.query_params.get('group_id', None)
+
         user = request.user
     
         response = []
         for s in status:
-            task = Task.objects.filter(status__title=s , assigned_to=user)
+            task = Task.objects.filter(status__title=s)
+            if user.role !="owner":
+                task = task.filter(assigned_to=user)
+
+            if  group is not None :
+
+                task =  task.filter(group__id=group)
+
+
+            
+            
+            taskdata = TaskSerializer(task , many=True , context={'request': request}).data
+            result = {}
+            result['status'] = s
+            result['task'] = taskdata
+            response.append(result)
+
+        return Response(response)    
+
+
+class TaskGroupPersonByUserid(APIView):
+    def get(self, request, user_id):
+        status = Status.objects.values_list('title' ,flat=True)
+    
+        response = []
+        for s in status:
+            task = Task.objects.filter(status__title=s ,assigned_to=user_id)
             taskdata = TaskSerializer(task , many=True , context={'request': request}).data
             result = {}
             result['status'] = s
@@ -549,7 +577,7 @@ class TaskGroupPerson(APIView):
 
 
 
-        
+
 
 
 class TaskGroupDefined(APIView):

@@ -12,6 +12,10 @@ from account.models import User
 from group.models import Group
 from rest_framework import status
 from django.db.models import Q
+from notification.models import Notification
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+
 
 from django.shortcuts import get_object_or_404
 
@@ -43,15 +47,12 @@ class TaskConversationListView(APIView):
         serializer = ConversationSerializer(conversations, many=True)
         return Response(serializer.data)
 
-
-
 class GroupConversationListView(APIView):
     def get(self, request):
         conversations = Conversation.objects.filter(group__isnull=False)
 
         serializer = ConversationSerializer(conversations, many=True)
         return Response(serializer.data)
-
 
 class ConversationMessagesAPIView(APIView):
 
@@ -77,7 +78,6 @@ class ConversationMessagesAPIView(APIView):
         serializer = MessageSerializer(messages, many=True ,context={"request": request})
 
         return Response(serializer.data)
-
 
 class DirectConversationView(APIView):
     permission_classes = [IsAuthenticated]
@@ -126,7 +126,6 @@ class DirectConversationView(APIView):
         return Response({
             "conversation_id": conversation.id
         })
-
 
 class ConversationMemberView(APIView):
     permission_classes = [IsAuthenticated]
@@ -189,11 +188,15 @@ class ConversationMemberView(APIView):
 
         for user in users:
 
+            chattitle = Conversation.objects.filter(id=conversation_id).first().title
+
 
             deleted, _ = ConversationMember.objects.filter(
                 conversation_id=conversation_id,
                 user_id=user
             ).delete()
+
+            self.CreateNotification(user , "حذف از چت!" , f"شما از چت {chattitle} پاک شدید")
 
 
         return Response(
@@ -202,6 +205,28 @@ class ConversationMemberView(APIView):
         )
 
 
+    def CreateNotification(self, recipient, title, message):
+
+        notification = Notification.objects.create(
+            recipient=recipient,
+            title=title,
+            message=message
+        )
+
+        channel_layer = get_channel_layer()
+
+        async_to_sync(channel_layer.group_send)(
+            f"notification_{recipient.id}",
+            {
+                "type": "send_notification",
+                "id": notification.id,
+                "title": title,
+                "message": message,
+                "created_at": notification.created_at.isoformat(),
+            }
+        )
+
+        return notification
 class ConversationData(APIView):
     permission_classes = [IsAuthenticated]
 

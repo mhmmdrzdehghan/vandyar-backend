@@ -10,15 +10,31 @@ from .models import (
     MessageReaction,
 )
 
+
+
 class ChatConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
 
+        self.user = self.scope["user"]
+
+        if not self.user.is_authenticated:
+            await self.close()
+            return
+
         self.conversation_id = self.scope["url_route"]["kwargs"]["conversation_id"]
         self.room_group_name = f"chat_{self.conversation_id}"
+        self.user_group_name = f"user_{self.user.id}"
 
+        # گروه چت
         await self.channel_layer.group_add(
             self.room_group_name,
+            self.channel_name
+        )
+
+        # گروه شخصی کاربر برای unread
+        await self.channel_layer.group_add(
+            self.user_group_name,
             self.channel_name
         )
 
@@ -44,14 +60,78 @@ class ChatConsumer(AsyncWebsocketConsumer):
         elif event == "delete":
             await self.handle_delete(data)
 
+        elif event == "read":
+            await self.mark_as_read()
+
+    # -----------------------------
+    # DB: unread count
+    # -----------------------------
+
+    @database_sync_to_async
+    def get_unread_count(self, conversation_id, user_id):
+
+        from chat.models import ConversationMember, Message
+
+        member = ConversationMember.objects.select_related(
+            "last_read_message"
+        ).get(
+            conversation_id=conversation_id,
+            user_id=user_id
+        )
+
+        if member.last_read_message_id:
+            return Message.objects.filter(
+                conversation_id=conversation_id,
+                id__gt=member.last_read_message_id
+            ).exclude(sender_id=user_id).count()
+
+        return Message.objects.filter(
+            conversation_id=conversation_id
+        ).exclude(sender_id=user_id).count()
+
+    # -----------------------------
+    # DB: members
+    # -----------------------------
+
+    @database_sync_to_async
+    def get_conversation_members(self, conversation_id):
+
+        from chat.models import ConversationMember
+
+        return list(
+            ConversationMember.objects.filter(
+                conversation_id=conversation_id
+            ).values_list("user_id", flat=True)
+        )
+
+    # -----------------------------
+    # DB: mark read
+    # -----------------------------
+
+    @database_sync_to_async
+    def mark_read_db(self):
+
+        from chat.models import ConversationMember, Message
+
+        last_message = Message.objects.filter(
+            conversation_id=self.conversation_id
+        ).order_by("-id").first()
+
+        if not last_message:
+            return
+
+        ConversationMember.objects.filter(
+            conversation_id=self.conversation_id,
+            user_id=self.user.id
+        ).update(last_read_message=last_message)
+
     # -----------------------------
     # MESSAGE
     # -----------------------------
+
     async def handle_message(self, data):
 
-        user = self.scope["user"]
-        if not user.is_authenticated:
-            return
+        user = self.user
 
         content = data.get("message")
         reply_to = data.get("reply_to")
@@ -61,6 +141,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         message = await self.save_message(user, content, reply_to)
 
+        # ارسال پیام به چت
         await self.channel_layer.group_send(
             self.room_group_name,
             {
@@ -70,10 +151,66 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 "message": message["content"],
                 "reply_to": message["reply_to"],
                 "user_id": user.id,
-                "is_task": message["is_task"],
-                "task_id": message["task_id"],
             }
         )
+
+        # گرفتن اعضای چت
+        members = await self.get_conversation_members(self.conversation_id)
+
+        # ارسال unread به هر کاربر
+        for member_id in members:
+
+            if member_id == user.id:
+                continue
+
+            unread = await self.get_unread_count(
+                self.conversation_id,
+                member_id
+            )
+
+            await self.channel_layer.group_send(
+                f"user_{member_id}",
+                {
+                    "type": "unread_update",
+                    "conversation_id": self.conversation_id,
+                    "unread": unread,
+                }
+            )
+
+    # -----------------------------
+    # MARK AS READ
+    # -----------------------------
+
+    async def mark_as_read(self):
+
+        await self.mark_read_db()
+
+        await self.channel_layer.group_send(
+            f"user_{self.user.id}",
+            {
+                "type": "unread_update",
+                "conversation_id": self.conversation_id,
+                "unread": 0,
+            }
+        )
+
+    # -----------------------------
+    # SEND EVENTS
+    # -----------------------------
+
+    async def chat_message(self, event):
+
+        await self.send(text_data=json.dumps(event))
+
+    async def unread_update(self, event):
+
+        await self.send(text_data=json.dumps({
+            "event": "unread",
+            "conversation_id": event["conversation_id"],
+            "unread": event["unread"],
+        }))
+
+
     # -----------------------------
     # REACTION
     # -----------------------------

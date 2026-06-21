@@ -68,9 +68,12 @@ class ProjectView(ModelViewSet):
         # subproject
         # ---------------------------------
 
+        projectname = project.title
+
         sub = SubProject.objects.create(
             project=project,
-            title="عمومی",
+            title= f"عمومی-{projectname}",
+            status_id=1,
             created_by=current_user
         )
 
@@ -80,9 +83,11 @@ class ProjectView(ModelViewSet):
         # group
         # ---------------------------------
 
+
+
         group = Group.objects.create(
             subproject=sub,
-            title="عمومی",
+            title= f"عمومی-{projectname}",
             created_by=current_user
         )
 
@@ -209,6 +214,7 @@ class SubProjetView(ModelViewSet):
             # ----------------------------
             sub = SubProject.objects.create(
                 created_by=request.user,
+                status_id=1,
                 **data
             )
 

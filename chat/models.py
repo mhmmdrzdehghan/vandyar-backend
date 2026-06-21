@@ -24,23 +24,6 @@ class Conversation(models.Model):
     def __str__(self):
         return self.title or f"Conversation {self.id}"
 
-
-
-class ConversationMember(models.Model):
-
-    conversation = models.ForeignKey(Conversation,on_delete=models.CASCADE,related_name="members")
-    user = models.ForeignKey(User,on_delete=models.CASCADE,related_name="conversations")
-    is_admin = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        unique_together = ("conversation", "user")
-        indexes = [
-            models.Index(fields=["conversation", "user"]),
-        ]
-
-
 class Message(models.Model):
 
     conversation = models.ForeignKey(
@@ -86,6 +69,25 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.sender} -> {self.conversation_id}"
+
+
+class ConversationMember(models.Model):
+
+    conversation = models.ForeignKey(Conversation,on_delete=models.CASCADE,related_name="members")
+    user = models.ForeignKey(User,on_delete=models.CASCADE,related_name="conversations")
+    is_admin = models.BooleanField(default=False)
+    last_read_message = models.ForeignKey(Message,on_delete=models.SET_NULL,null=True,blank=True,related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+    class Meta:
+        unique_together = ("conversation", "user")
+        indexes = [
+            models.Index(fields=["conversation", "user"]),
+        ]
+
+
 
 
 class MessageReaction(models.Model):
