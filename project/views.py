@@ -462,7 +462,7 @@ class ProjectDataView(APIView):
             'subprojects__groups'
         ).all()
 
-        serializer = ProjectSerializer(projects, many=True)
+        serializer = ProjectSerializer(projects, many=True , context={'request': request})
         return Response(serializer.data)
 
 class SubProjectReport(APIView):
@@ -484,7 +484,7 @@ class SubProjectReport(APIView):
                     'groupCount':groupCount ,
                     'membercount':membercount , 
                     'managercount':managercount,
-                    'subproject':SubProjectSerializer(sub).data,
+                    'subproject':SubProjectSerializer(sub , context={'request': request}).data,
                     "statusdata":StatusSerializer(statuses , many=True).data
 
                     }
@@ -540,7 +540,7 @@ class AllSubprojectReport(APIView):
                 "groupCount": subproject.group_count,
                 "membercount": subproject.member_count,
                 "managercount": subproject.manager_count,
-                "subproject": SubProjectSerializer(subproject).data,
+                "subproject": SubProjectSerializer(subproject , context={'request': request}).data,
                 "statusdata": status_map.get(subproject.id, [])
             })
 
