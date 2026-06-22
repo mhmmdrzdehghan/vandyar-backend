@@ -88,6 +88,7 @@ class SubProjectUpdateSerializer(serializers.ModelSerializer):
         fields = [
             "title",
             "description",
+            "status",
             "managers",
             "members",
         ]

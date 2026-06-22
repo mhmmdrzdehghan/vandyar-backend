@@ -13,7 +13,6 @@ class MessageReactionSerializer(serializers.ModelSerializer):
         fields = ["id", "message" ,"user", "reaction", "created_at"]
         read_only_fields = ["id" , "user" , "created_at"]
 
-
 class ConversationMemberSerializer(serializers.ModelSerializer):
     class Meta:
         model = ConversationMember
@@ -32,7 +31,6 @@ class ConversationMemberSerializer(serializers.ModelSerializer):
             "updated_at"
 
         ]
-
 
 class MessageSerializer(serializers.ModelSerializer):
 
@@ -90,20 +88,21 @@ class MessageSerializer(serializers.ModelSerializer):
             ).values_list("user_id", flat=True)
         )
 
-        
-
-
 class ConversationSerializer(serializers.ModelSerializer):
-    projectid      = serializers.SerializerMethodField(read_only=True)
-    admins         = serializers.SerializerMethodField()
-    members        = serializers.SerializerMethodField()
-    subprojectname = serializers.SerializerMethodField()
-    projectname    = serializers.SerializerMethodField()
-    groupname      = serializers.SerializerMethodField()
-    profiles       = serializers.SerializerMethodField()
-    chattitle      = serializers.SerializerMethodField()
-    avatarProfile  = serializers.SerializerMethodField()
-    unread_count   = serializers.SerializerMethodField()
+    projectid           = serializers.SerializerMethodField(read_only=True)
+    admins              = serializers.SerializerMethodField()
+    members             = serializers.SerializerMethodField()
+    subprojectname      = serializers.SerializerMethodField()
+    projectname         = serializers.SerializerMethodField()
+    groupname           = serializers.SerializerMethodField()
+    profiles            = serializers.SerializerMethodField()
+    chattitle           = serializers.SerializerMethodField()
+    avatarProfile       = serializers.SerializerMethodField()
+    unread_count        = serializers.SerializerMethodField()
+    last_message        = serializers.SerializerMethodField()
+    count_all_message   = serializers.SerializerMethodField()
+    count_all_task      = serializers.SerializerMethodField()
+
 
  
     
@@ -119,6 +118,9 @@ class ConversationSerializer(serializers.ModelSerializer):
             "admins",
             "created_by",
             "avatarProfile",
+            "last_message",
+            "count_all_message",
+            "count_all_task",
             "members",
             "subprojectname",
             "profiles",
@@ -137,7 +139,10 @@ class ConversationSerializer(serializers.ModelSerializer):
             "admins",
             "subprojectname",
             "members",
+            "count_all_task",
+            "count_all_message",
             "avatarProfile",
+            "last_message",
             "projectname",
             "groupname",
             "unread_count",
@@ -255,6 +260,13 @@ class ConversationSerializer(serializers.ModelSerializer):
         )
     
 
+    def get_count_all_message(self , instace):
+        return instace.messages.count()
+
+
+
+    def get_count_all_task(self , instance):
+        return instance.messages.filter(is_task=True).count()
 
     def get_chattitle(self, obj):
 
@@ -273,20 +285,13 @@ class ConversationSerializer(serializers.ModelSerializer):
         return "Unknown"
     
 
-    # def get_unread_count(self, obj):
-    #     user = self.context["request"].user
+    
+    def get_last_message(self, instance):
+        last_message = instance.messages.first()
+        return last_message.content if last_message else None
 
-    #     member = obj.members.filter(user=user).first()
-    #     if not member:
-    #         return 0
 
-    #     if member.last_read_message:
-    #         return obj.messages.filter(
-    #             id__gt=member.last_read_message.id
-    #         ).exclude(sender=user).count()
-
-    #     return obj.messages.exclude(sender=user).count()
-
+    
 
 class UpdateConversationSerializer(serializers.Serializer):
     users = serializers.ListField(

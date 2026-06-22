@@ -35,6 +35,8 @@ class UserSerializer(serializers.ModelSerializer):
     avatar = serializers.ImageField(write_only=True, required=False)
     password = serializers.CharField(write_only=True)
 
+    conversation_id = serializers.SerializerMethodField()
+
     Profile = ProfileSerializer(read_only=True)
 
     class Meta:
@@ -46,11 +48,12 @@ class UserSerializer(serializers.ModelSerializer):
             "password",
             "phone",
             "first_name",
+            "conversation_id",
             "Profile",
             "last_name",
             "avatar",
         ]
-        read_only_fields = ["id" , "Profile"]
+        read_only_fields = ["id" , "Profile" ,"conversation_id"]
 
     def validate_phone(self, value):
         if not value.startswith("09"):
@@ -119,6 +122,20 @@ class UserSerializer(serializers.ModelSerializer):
             )
 
         return user
+
+    def get_conversation_id(self, instance):
+        me = self.context["request"].user
+
+        chat = Conversation.objects.filter(
+            type="direct",
+            members__user=me
+        ).filter(
+            members__user=instance
+        ).first()
+
+        return chat.id if chat else None
+
+        
 
 
 class CustomAuthTokenSerializer(serializers.Serializer):
