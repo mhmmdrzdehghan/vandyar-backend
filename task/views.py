@@ -17,13 +17,16 @@ from chat.models import Message , Conversation , ConversationMember
 from django.shortcuts import get_object_or_404
 from rest_framework import status as s 
 from chat.serializer import MessageSerializer
+from project.serializer import SubProjectSerializer
 import json
 from datetime import datetime
+from project.models import SubProject
 from notification.models import Notification
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from note.models import Note
 from .permission import IsTaskManagerOrOwner
+from rest_framework.exceptions import NotFound
 
 
 
@@ -97,6 +100,22 @@ class TaskView(ModelViewSet):
                     message.task = task
                     message.save()
 
+            else:
+                group =  task.group
+                conversation = Conversation.objects.filter(group=group).first()
+                if conversation is None:
+                    raise NotFound("چت پیدا نشد")
+
+                data = {"conversation":conversation ,
+                        "sender":user ,
+                        "is_task":True,
+                        "task":task,
+                        "content":task.title
+
+                        }
+                Message.objects.create(**data)
+
+
 
             #-------------------------------
             # note
@@ -145,7 +164,7 @@ class TaskView(ModelViewSet):
             #-----------------------------
             # notification
             #-----------------------------
-            assigned = data.get('assigned_to')
+            assigned = task.assigned_to
             actor_name     = f" {user.Profile.first_name} {user.Profile.last_name}"
             title = "تسک جدید دارید"
             message = f"یک تسک توسط {actor_name} به شما اضافه شد"
@@ -574,39 +593,51 @@ class TaskGroupPersonByUserid(APIView):
 class TaskGroupDefined(APIView):
     def get(self, request, chat_id):
 
-        statuses = Status.objects.all()
+        status = Status.objects.values_list('title' , flat=True)
 
-        data = {
-            status.title: []
-            for status in statuses
-        }
+        data =  []
 
-        tasks = (
-            Task.objects
-            .filter(group__chat_room__id=chat_id , assigned_to=request.user)
-            .select_related("status", "assigned_to")
-        )
+        user = request.user
 
-        for task in tasks:
-            data[task.status.title].append({
-                "id": task.id,
-                "groupid":task.group.id,
-                "title": task.title,
-                "assigned": {
-                    "name": task.assigned_to.username,
-                    "first_name": task.assigned_to.Profile.first_name,
-                    "last_name": task.assigned_to.Profile.last_name,
-                    "avatar": (
-                        task.assigned_to.Profile.avatar.url
-                        if task.assigned_to.Profile.avatar
-                        else None
-                    ),
-                } if task.assigned_to else None,
-                "priority": task.priority,
-                "date": task.deadline,
-            })
+        for s in status :
+            tasks = Task.objects.filter(status__title=s ,message__conversation__id =chat_id)
 
-        return Response(data)     
+            if not ((user.role == "owner") or (user.role == "Owner")) :
+                tasks = tasks.filter(assigned_to=user)
+
+
+            data.append({"status":s , 'tasks' : TaskSerializer(tasks , many=True , context={'request': request}).data})
+
+        return Response(data)    
+
+class TaskAndProjectKanban(APIView):
+    def get(self, request, *args, **kwargs):
+        status = Status.objects.values_list('title' , flat=True)
+
+        data =  []
+
+        user = request.user
+
+        for s in status :
+            tasks = Task.objects.filter(status__title=s)
+
+            subproject = SubProject.objects.filter(status__title=s)
+
+            if not ((user.role == "owner") or (user.role == "Owner")) :
+                tasks = tasks.filter(assigned_to=user)
+                subproject = subproject.filter(groups__members = user)
+
+            data.append({"status":s , 
+                        'tasks' : TaskSerializer(tasks , many=True , context={'request': request}).data,
+                        'subprojects' : SubProjectSerializer(subproject, many=True , context={'request': request}).data   
+                        })
+            
+        return Response(data)    
+
+
+                        
+
+
 
 #analysis
 class TaskPriortyAnalysis(APIView):
@@ -626,6 +657,7 @@ class TaskGRoupAnalysis(APIView):
                 )
         
         return Response(data)
+
 
 
 # Create your views here.

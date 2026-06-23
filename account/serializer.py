@@ -124,7 +124,14 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
     def get_conversation_id(self, instance):
-        me = self.context["request"].user
+
+        
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return None
+
+        me = request.user
+
 
         chat = Conversation.objects.filter(
             type="direct",

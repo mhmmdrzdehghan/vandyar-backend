@@ -61,7 +61,7 @@ class ProjectView(ModelViewSet):
         users = User.objects.filter(role="user")
 
         all_members = User.objects.filter(
-            role__in=["owner", "user"]
+            role__in=["owner"]
         ).distinct()
 
         # ---------------------------------
@@ -99,7 +99,7 @@ class ProjectView(ModelViewSet):
 
         chat = Conversation.objects.create(
             type="group",
-            title="عمومی",
+            title=f"عمومی-{projectname}",
             group=group,
             created_by=current_user
         )
@@ -165,7 +165,6 @@ class ProjectView(ModelViewSet):
 
     def perform_create(self, serializer):
         return serializer.save(created_by=self.request.user)
-
 
 
 class SubProjetView(ModelViewSet):
